@@ -24,7 +24,6 @@ namespace Khjin.CombatInterdiction
         private ConcurrentQueue<CombatMessage> combatMessages = new ConcurrentQueue<CombatMessage>();
 
         private const float GRAVITY = 9.81f;        // Constant gravity in m/s²
-        private int thrusterRefreshTicks = 10;
 
         private class CombatMessage
         {
@@ -57,7 +56,7 @@ namespace Khjin.CombatInterdiction
         {
             // Only process blocks and valid damage
             IMySlimBlock targetBlock = target as IMySlimBlock;
-            if (targetBlock == null || IsToolDamage(info.Type)) { return; }
+            if (targetBlock == null || IsNonCombatDamage(info.Type)) { return; }
 
             // Try to get the parent grid
             IMyCubeGrid targetGrid = Utilities.GetBaseGrid(targetBlock.CubeGrid);
@@ -71,6 +70,11 @@ namespace Khjin.CombatInterdiction
             IMyEntity attackerEntity = null;
             if (!MyAPIGateway.Entities.TryGetEntityById(targetId, out targetEntity)
             || !MyAPIGateway.Entities.TryGetEntityById(attackerId, out attackerEntity))
+            { return; }
+
+            // Filter out deformation damages not caused by grids
+            if (info.Type == MyDamageType.Deformation
+            && !(attackerEntity is MyCubeGrid))
             { return; }
 
             // Don't process null values
@@ -383,13 +387,20 @@ namespace Khjin.CombatInterdiction
             }
         }
 
-        private bool IsToolDamage(MyStringHash type)
+        private bool IsNonCombatDamage(MyStringHash type)
         {
-            if (type == MyDamageType.Grind
-            || type == MyDamageType.Drill
-            || type == MyDamageType.Weld)
-            { return true; }
-            return false;
+            if (type == MyDamageType.Bullet
+            || type == MyDamageType.Explosion
+            || type == MyDamageType.Rocket
+            || type == MyDamageType.Mine
+            || type == MyDamageType.Weapon
+            || type == MyDamageType.Deformation
+            || type == MyDamageType.Destruction
+            || type == MyDamageType.Spider
+            || type == MyDamageType.Wolf
+            || type == MyDamageType.Unknown)
+            { return false; }
+            return true;
         }
     
         private void RefreshThrusters(Ship ship)
