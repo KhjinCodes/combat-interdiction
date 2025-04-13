@@ -1,0 +1,438 @@
+﻿using Sandbox.Definitions;
+using Sandbox.Game.Entities;
+using Sandbox.ModAPI;
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using VRage.Game;
+using VRage.Game.Components;
+using VRage.Game.Entity;
+using VRage.Game.ModAPI;
+using VRage.ModAPI;
+using VRage.Utils;
+using VRageMath;
+using Jakaria.API;
+
+namespace Khjin.CombatInterdiction
+{
+    public class CombatInterdictionLogic
+    {
+        private CombatInterdictionSession session;
+        private CombatInterdictionSettings settings;
+
+        private List<long> activeContacts = new List<long>();
+        private ConcurrentQueue<CombatMessage> combatMessages = new ConcurrentQueue<CombatMessage>();
+
+        private const float GRAVITY = 9.81f;        // Constant gravity in m/s²
+        
+        private class CombatMessage
+        {
+            public long Recipient { get; private set; }
+            public string Message { get; private set; }
+            public string Color { get; private set; }
+
+            public CombatMessage(long recipient, string message, string color)
+            {
+                Recipient = recipient;
+                Message = message;
+                Color = color;
+            }
+        }
+
+        public CombatInterdictionLogic() { }
+
+        public void LoadData()
+        {
+            session = CombatInterdictionSession.Instance;
+            settings = session.Settings;
+        }
+
+        public void UnloadData()
+        {
+            activeContacts.Clear();
+        }
+
+        public void UpdateCombatZones(object target, ref MyDamageInformation info)
+        {
+            // Only process blocks and valid damage
+            IMySlimBlock targetBlock = target as IMySlimBlock;
+            if (targetBlock == null || IsToolDamage(info.Type)) { return; }
+
+            // Try to get the parent grid
+            IMyCubeGrid targetGrid = Utilities.GetBaseGrid(targetBlock.CubeGrid);
+            if (targetGrid == null) { return; }
+
+            long targetId = targetGrid.EntityId;
+            long attackerId = info.AttackerId;
+
+            // Try to get the entities
+            IMyEntity targetEntity = null;
+            IMyEntity attackerEntity = null;
+            if (!MyAPIGateway.Entities.TryGetEntityById(targetId, out targetEntity)
+            || !MyAPIGateway.Entities.TryGetEntityById(attackerId, out attackerEntity))
+            { return; }
+
+            // Don't process null values
+            if (targetEntity.MarkedForClose || attackerEntity.MarkedForClose) { return; }
+
+            // Get the center location between combatants
+            Vector3D center = (targetEntity.GetPosition() + attackerEntity.GetPosition()) / 2;
+            BoundingSphereD combatArea = new BoundingSphereD(center, settings.combatZoneRadius);
+
+            List<MyEntity> entitiesInSpehere = new List<MyEntity>();
+            MyGamePruningStructure.GetAllEntitiesInSphere(ref combatArea, entitiesInSpehere);
+
+            // Register or update each combatant
+            foreach (MyEntity entity in entitiesInSpehere)
+            {
+                // Only handle grids not due for clean-up
+                IMyCubeGrid grid = entity as IMyCubeGrid;
+                if (grid == null) { continue; }
+
+                // Only process registered ships
+                grid = Utilities.GetBaseGrid(grid);
+                if (grid == null
+                || grid.MarkedForClose
+                || !session.ContainsShip(grid.EntityId))
+                { continue; }
+
+                // Ship is not yet in combat, inform the current pilot
+                Ship ship = session.GetShip(grid.EntityId);
+                if (!ship.InCombat)
+                {
+                    long identiyId = GetControllingPlayerIdentiyId(ship);
+                    if (identiyId > 0)
+                    { SendCombatMessage(identiyId, "Entered COMBAT MODE", "Red"); }
+                }
+
+                // Refresh interdiction duration, 1 sec = 60 ticks
+                ship.InterdictionDuration = settings.interdictionDuration * 60;
+            }
+        }
+
+        private void SendCombatMessage(long identiyId, string message, string color)
+        {
+            combatMessages.Enqueue(new CombatMessage(identiyId, message, color));
+        }
+
+        public void ProcessCombatMessages()
+        {
+            CombatMessage message;
+            if (combatMessages.Count > 0 && combatMessages.TryDequeue(out message))
+            {
+                Utilities.MessagePlayer(message.Message, message.Recipient, message.Color);
+            }
+        }
+
+        public void UpdateShips()
+        {
+            Ship[] ships = session.Ships;
+            foreach (Ship ship in ships)
+            {
+                if (ship.Grid == null || ship.Grid.Physics == null || ship.MarkedForClose) { continue; }
+                UpdateCombatStatus(ship);
+                ApplySpeedLimits(ship);
+            }
+        }
+
+        private void UpdateCombatStatus(Ship ship)
+        {
+            if (ship.InCombat)
+            {
+                ship.InterdictionDuration--;
+                if (!ship.InCombat)
+                {
+                    long identiyId = GetControllingPlayerIdentiyId(ship);
+                    if (identiyId > 0)
+                    { SendCombatMessage(identiyId, "Entered PEACE MODE", "Blue"); }
+                }
+                else
+                {
+                    // Less than 5 seconds
+                    if (ship.InterdictionDuration <= 60 * 5)
+                    {
+                        if (ship.InterdictionDuration % 60 == 0)
+                        {
+                            long identiyId = GetControllingPlayerIdentiyId(ship);
+                            if (identiyId > 0)
+                            { SendCombatMessage(identiyId, $"Exiting COMBAT MODE in...{(int)(ship.InterdictionDuration / 60)} secs", "Blue"); }
+                        }
+                    }
+                }
+            }
+        }
+
+        private void ApplySpeedLimits(Ship ship)
+        {
+            // Check grid thrusters
+            RefreshThrusters(ship);
+
+            if (ship.Thrusters.Count == 0
+            || (GetControllingPlayerIdentiyId(ship) == -1 && ship.BoundingBox.Volume <= settings.minimumGridVolume)
+            || (Utilities.IsNpcOwned(ship.Grid) && !ship.InCombat))
+            { return; }
+
+            RefreshAtmosphereStatus(ship);
+            RefreshWaterStatus(ship);
+
+            float shipMaxSpeed = 100; // SE Default Max Speed
+            if (ship.Grid.GridSizeEnum == MyCubeSize.Small)
+            {
+                if (HasGasBasedThrusters(ship))
+                { shipMaxSpeed = GetSmallGridJetBaseSpeed(ship); }
+                else
+                { shipMaxSpeed = GetSmallGridBaseSpeed(ship); }
+
+                if (settings.allowSuperCruise && !ship.InCombat && IsOnSuperCruise(ship))
+                {
+                    shipMaxSpeed *= settings.smallGridBoostSpeedMultiplier;
+                }
+
+                shipMaxSpeed = MathHelper.Clamp(shipMaxSpeed, 0, settings.smallGridMaxSpeed);
+            }
+            else if (ship.Grid.GridSizeEnum == MyCubeSize.Large)
+            {
+                if (HasGasBasedThrusters(ship))
+                { shipMaxSpeed = GetLargeGridJetBaseSpeed(ship); }
+                else
+                { shipMaxSpeed = GetLargeGridBaseSpeed(ship); }
+
+                if (settings.allowSuperCruise && !ship.InCombat && IsOnSuperCruise(ship))
+                {
+                    shipMaxSpeed *= settings.largeGridBoostSpeedMultiplier;
+                    ApplyThrustBoost(ship);
+                }
+
+                shipMaxSpeed = MathHelper.Clamp(shipMaxSpeed, 0, settings.largeGridMaxSpeed);
+            }
+            else
+            { /* A NEW SIZE?!?! DO NOTHING. */ }
+
+
+            // Apply Speed Limit to Grid
+            float shipMaxSpeedSq = shipMaxSpeed * shipMaxSpeed;
+            float shipSpeedSq = ship.LinearVelocity.LengthSquared();
+            if (shipSpeedSq > shipMaxSpeedSq)
+            {
+                // Create speed buffer to prevent sudden slow down
+                if (ship.SpeedBuffer == 0)
+                {
+                    ship.SpeedBuffer = ship.LinearVelocity.Length() - shipMaxSpeed;
+                    ship.SpeedBufferDecayRate = ship.SpeedBuffer / (60 * 3);
+                }
+                else
+                {
+                    ship.SpeedBuffer -= ship.SpeedBufferDecayRate;
+                }
+
+                // Calculate grid speed buffer and unified direction
+                ship.SpeedBuffer = ship.SpeedBuffer < 0 ? 0 : ship.SpeedBuffer;
+                Vector3 direction = ship.Grid.Physics.LinearVelocity.Normalized();
+                Vector3 maxLinearVelocity = direction * (shipMaxSpeed + ship.SpeedBuffer);
+                ship.Grid.Physics.SetSpeeds(maxLinearVelocity, ship.AngularVelocity);
+            }
+            else
+            {
+                if (ship.SpeedBuffer > 0)
+                {
+                    ship.SpeedBuffer = 0;
+                    ship.SpeedBufferDecayRate = 0;
+                }
+            }
+        }
+
+        public float GetLargeGridBaseSpeed(Ship ship)
+        {
+            float weightKg = ship.Grid.Physics.Mass;
+            float maxThrust = settings.largeGridSpeedFactor * (float)Math.Pow(weightKg, settings.largeGridWeightFactor + 1) * GRAVITY;
+            float frontalArea = weightKg * settings.frontalAreaFactor;
+            float fluidDrag = GetFluidDensity(ship) * settings.shipDragCoefficient * frontalArea;
+            fluidDrag = fluidDrag <= 0 ? 1 : fluidDrag;
+            return (float)Math.Sqrt((2 * maxThrust) / fluidDrag);
+        }
+
+        public float GetLargeGridJetBaseSpeed(Ship ship)
+        {
+            float weightKg = ship.Grid.Physics.Mass;
+            float maxThrust = settings.largeGridJetSpeedFactor * (float)Math.Pow(weightKg, settings.largeGridJetWeightFactor + 1) * GRAVITY;
+            float frontalArea = weightKg * settings.frontalAreaFactor;
+            float fluidDrag = GetFluidDensity(ship) * settings.shipDragCoefficient * frontalArea;
+            fluidDrag = fluidDrag <= 0 ? 1 : fluidDrag;
+            return (float)Math.Sqrt((2 * maxThrust) / fluidDrag);
+        }
+
+        public float GetSmallGridBaseSpeed(Ship ship)
+        {
+            float weightKg = ship.Grid.Physics.Mass;
+            float thrust = settings.smallGridSpeedFactor * (float)Math.Pow(weightKg, settings.smallGridWeightFactor + 1) * GRAVITY;
+            float frontalArea = weightKg * settings.frontalAreaFactor;
+            float fluidDrag = GetFluidDensity(ship) * settings.aircraftDragCoefficient * frontalArea;
+            fluidDrag = fluidDrag <= 0 ? 1 : fluidDrag;
+            return (float)Math.Sqrt((2 * thrust) / fluidDrag);
+        }
+
+        public float GetSmallGridJetBaseSpeed(Ship ship)
+        {
+            float weightKg = ship.Mass;
+            float thrust = settings.smallGridJetSpeedFactor * (float)Math.Pow(weightKg, settings.smallGridJetWeightFactor + 1) * GRAVITY;
+            float frontalArea = weightKg * settings.frontalAreaFactor;
+            float fluidDrag = GetFluidDensity(ship) * settings.aircraftDragCoefficient * frontalArea;
+            fluidDrag = fluidDrag <= 0 ? 1 : fluidDrag;
+            return (float)Math.Sqrt((2 * thrust) / fluidDrag);
+        }
+
+        private float GetFluidDensity(Ship ship)
+        {
+            if (ship.InWater)
+            {
+                return settings.waterDensity * (ship.IsSubmerged ? 1.1f : 1.0f);
+            }
+            else if (ship.InAtmosphere)
+            {
+                return settings.airDensity * ship.AirDensity;
+            }
+            else
+            {
+                return 0;
+            }
+        }
+
+        private long GetControllingPlayerIdentiyId(Ship ship)
+        {
+            IMyPlayer player = MyAPIGateway.Players.GetPlayerControllingEntity(ship.Grid);
+            return player == null ? -1 : player.IdentityId;
+        }
+
+        public bool HasGasBasedThrusters(Ship ship)
+        {
+            var thrusters = ship.Thrusters;
+            foreach (var thruster in thrusters)
+            {
+                // Skip non-contributing thrusters
+                if (!thruster.IsFunctional) { continue; }
+                
+                // Check its definition
+                MyThrustDefinition thrustDef = (thruster as MyThrust)?.BlockDefinition;
+                if (thrustDef != null)
+                {
+                    if ($"{thrustDef.FuelConverter.FuelId.TypeId}" == "MyObjectBuilder_GasProperties")
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        private bool IsOnSuperCruise(Ship ship)
+        {
+            var cockpits = ship.Grid.GetFatBlocks<IMyCockpit>();
+            foreach (var cockpit in cockpits)
+            {
+                var logic = cockpit.GameLogic?.GetAs<CombatInterdictionBlock>();
+                if (logic != null && cockpit.IsFunctional && cockpit.CanControlShip && cockpit.IsUnderControl)
+                {
+                    if (logic.SuperCruise) { return true; }
+                    else { continue; }
+                }
+            }
+            return false;
+        }
+
+        private void ApplyThrustBoost(Ship ship)
+        {
+            // Get the total thrust count
+            float totalThrust = 0;
+            int activeThrusterCount = 0;
+            var thrusters = ship.Thrusters;
+            foreach (var thruster in thrusters)
+            {
+                float currentThrust = thruster.CurrentThrust;
+                if (Math.Abs(currentThrust) < 0.0001f) { continue; }
+                totalThrust += currentThrust;
+                activeThrusterCount++;
+            }
+
+            // Apply thruster based boost
+            float maxThrust = ship.Grid.Physics.Mass * GRAVITY * settings.largeGridBoostTwr;
+            foreach (var thruster in thrusters)
+            {
+                float currentThrust = thruster.CurrentThrust;
+                if (Math.Abs(currentThrust) < 0.0001f) { continue; }
+
+                float ratio = currentThrust / totalThrust;
+                float boostForce = (maxThrust * ratio) - currentThrust;
+                Vector3D force = thruster.WorldMatrix.Backward * boostForce;
+
+                var groupProperties = MyGridPhysicalGroupData.GetGroupSharedProperties((MyCubeGrid)ship.Grid);
+                ship.Grid.Physics.AddForce(MyPhysicsForceType.APPLY_WORLD_FORCE,
+                    force, groupProperties.CoMWorld, null);
+            }
+        }
+
+        private bool IsToolDamage(MyStringHash type)
+        {
+            if (type == MyDamageType.Grind
+            || type == MyDamageType.Drill
+            || type == MyDamageType.Weld)
+            { return true; }
+            return false;
+        }
+    
+        private void RefreshThrusters(Ship ship)
+        {
+            ship.Grids.Clear();
+            ship.Thrusters.Clear();
+            var group = ship.Grid.GetGridGroup(GridLinkTypeEnum.Mechanical);
+            group.GetGrids(ship.Grids);
+
+            foreach (var grid in ship.Grids)
+            {
+                ship.Thrusters.AddRange(grid.GetFatBlocks<IMyThrust>());
+            }
+        }
+    
+        private void RefreshAtmosphereStatus(Ship ship)
+        {
+            ship.NaturalGravity = ship.Grid.NaturalGravity.Length();
+            if (ship.InGravity)
+            {
+                var planet = MyGamePruningStructure.GetClosestPlanet(ship.Grid.WorldMatrix.Translation);
+                ship.AirDensity = planet.GetAirDensity(ship.Grid.WorldMatrix.Translation);
+            }
+        }
+
+        private void RefreshWaterStatus(Ship ship)
+        {
+            ship.InWater = false;
+            ship.IsSubmerged = false;
+            try
+            {
+                int submergedPoints = 0;
+                for (int i = 0; i < 8; i++)
+                {
+                    var point = ship.BoundingBox.GetCorner(i);
+                    if (WaterModAPI.IsUnderwater(point))
+                    {
+                        submergedPoints++;
+                        ship.InWater = submergedPoints >= 4;
+                        ship.IsSubmerged = submergedPoints >= 8;
+                    }
+                }
+            }
+            catch
+            { /* Failed to call WaterMod. Table flip! */ }
+        }
+    
+        private IMyShipController GetControlSeat(Ship ship)
+        {
+            var controllers = ship.Grid.GetFatBlocks<IMyShipController>();
+            foreach (var controller in controllers)
+            {
+                if (controller.CanControlShip && controller.IsUnderControl) 
+                { return controller; }
+            }
+            return null;
+        }
+    }
+}
