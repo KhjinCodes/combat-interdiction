@@ -318,7 +318,7 @@ namespace Khjin.CombatInterdiction
         private void ReadSettings()
         {
             // Global Settings
-            allowSuperCruise = iniUtil.Get(SECTION_NAME, nameof(smallGridBoostSpeedMultiplier)).ToBoolean();
+            allowSuperCruise = iniUtil.Get(SECTION_NAME, nameof(allowSuperCruise)).ToBoolean();
             globalLargeGridMaxSpeed = (float)iniUtil.Get(SECTION_NAME, nameof(smallGridBoostSpeedMultiplier)).ToDouble();
             globalSmallGridMaxSpeed = (float)iniUtil.Get(SECTION_NAME, nameof(smallGridBoostSpeedMultiplier)).ToDouble();
             largeGridMaxSpeed = (float)iniUtil.Get(SECTION_NAME, nameof(largeGridMaxSpeed)).ToDouble();
