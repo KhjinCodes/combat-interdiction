@@ -24,7 +24,8 @@ namespace Khjin.CombatInterdiction
         private ConcurrentQueue<CombatMessage> combatMessages = new ConcurrentQueue<CombatMessage>();
 
         private const float GRAVITY = 9.81f;        // Constant gravity in m/s²
-        
+        private int thrusterRefreshTicks = 10;
+
         private class CombatMessage
         {
             public long Recipient { get; private set; }
@@ -83,8 +84,10 @@ namespace Khjin.CombatInterdiction
             MyGamePruningStructure.GetAllEntitiesInSphere(ref combatArea, entitiesInSpehere);
 
             // Register or update each combatant
-            foreach (MyEntity entity in entitiesInSpehere)
+            for (int i = (entitiesInSpehere.Count - 1); i >= 0; i--)
             {
+                MyEntity entity = entitiesInSpehere[i];
+
                 // Only handle grids not due for clean-up
                 IMyCubeGrid grid = entity as IMyCubeGrid;
                 if (grid == null) { continue; }
@@ -127,8 +130,9 @@ namespace Khjin.CombatInterdiction
         public void UpdateShips()
         {
             Ship[] ships = session.Ships;
-            foreach (Ship ship in ships)
+            for (int i = (ships.Length-1); i >= 0; i--)
             {
+                Ship ship = ships[i];
                 if (ship.Grid == null || ship.Grid.Physics == null || ship.MarkedForClose) { continue; }
                 UpdateCombatStatus(ship);
                 ApplySpeedLimits(ship);
@@ -305,30 +309,38 @@ namespace Khjin.CombatInterdiction
 
         public bool HasGasBasedThrusters(Ship ship)
         {
-            var thrusters = ship.Thrusters;
-            foreach (var thruster in thrusters)
+            try
             {
-                // Skip non-contributing thrusters
-                if (!thruster.IsFunctional) { continue; }
-                
-                // Check its definition
-                MyThrustDefinition thrustDef = (thruster as MyThrust)?.BlockDefinition;
-                if (thrustDef != null)
+                for (int i = (ship.Thrusters.Count - 1); i >= 0; i--)
                 {
-                    if ($"{thrustDef.FuelConverter.FuelId.TypeId}" == "MyObjectBuilder_GasProperties")
+                    IMyThrust thruster = ship.Thrusters[i];
+                    if (thruster == null || !thruster.IsFunctional) { continue; }
+
+                    // Check its definition
+                    MyThrustDefinition thrustDef = (thruster as MyThrust)?.BlockDefinition;
+                    if (thrustDef != null)
                     {
-                        return true;
+                        if ($"{thrustDef.FuelConverter.FuelId.TypeId}" == "MyObjectBuilder_GasProperties")
+                        {
+                            return true;
+                        }
                     }
                 }
+                return false;
             }
-            return false;
+            catch
+            {
+                // WTH happened? :D
+                return false;
+            }
         }
 
         private bool IsOnSuperCruise(Ship ship)
         {
-            var cockpits = ship.Grid.GetFatBlocks<IMyCockpit>();
-            foreach (var cockpit in cockpits)
+            List<IMyCockpit> cockpits = new List<IMyCockpit>(ship.Grid.GetFatBlocks<IMyCockpit>());
+            for (int i = (cockpits.Count-1); i >= 0; i--)
             {
+                IMyCockpit cockpit = cockpits[i];
                 var logic = cockpit.GameLogic?.GetAs<CombatInterdictionBlock>();
                 if (logic != null && cockpit.IsFunctional && cockpit.CanControlShip && cockpit.IsUnderControl)
                 {
@@ -344,9 +356,9 @@ namespace Khjin.CombatInterdiction
             // Get the total thrust count
             float totalThrust = 0;
             int activeThrusterCount = 0;
-            var thrusters = ship.Thrusters;
-            foreach (var thruster in thrusters)
+            for (int i = (ship.Thrusters.Count - 1); i >= 0; i--)
             {
+                IMyThrust thruster = ship.Thrusters[i];
                 float currentThrust = thruster.CurrentThrust;
                 if (Math.Abs(currentThrust) < 0.0001f) { continue; }
                 totalThrust += currentThrust;
@@ -355,8 +367,9 @@ namespace Khjin.CombatInterdiction
 
             // Apply thruster based boost
             float maxThrust = ship.Grid.Physics.Mass * GRAVITY * settings.largeGridBoostTwr;
-            foreach (var thruster in thrusters)
+            for (int i = (ship.Thrusters.Count - 1); i >= 0; i--)
             {
+                IMyThrust thruster = ship.Thrusters[i];
                 float currentThrust = thruster.CurrentThrust;
                 if (Math.Abs(currentThrust) < 0.0001f) { continue; }
 
@@ -385,13 +398,13 @@ namespace Khjin.CombatInterdiction
             ship.Thrusters.Clear();
             var group = ship.Grid.GetGridGroup(GridLinkTypeEnum.Mechanical);
             group.GetGrids(ship.Grids);
-
-            foreach (var grid in ship.Grids)
+            for (int i = (ship.Grids.Count - 1); i >= 0; i--)
             {
+                IMyCubeGrid grid = ship.Grids[i];
                 ship.Thrusters.AddRange(grid.GetFatBlocks<IMyThrust>());
             }
         }
-    
+
         private void RefreshAtmosphereStatus(Ship ship)
         {
             ship.NaturalGravity = ship.Grid.NaturalGravity.Length();
@@ -426,10 +439,12 @@ namespace Khjin.CombatInterdiction
     
         private IMyShipController GetControlSeat(Ship ship)
         {
-            var controllers = ship.Grid.GetFatBlocks<IMyShipController>();
-            foreach (var controller in controllers)
+            List<IMyShipController> controllers = 
+                new List<IMyShipController>(ship.Grid.GetFatBlocks<IMyShipController>());
+            for (int i = (controllers.Count-1); i >= 0; i--)
             {
-                if (controller.CanControlShip && controller.IsUnderControl) 
+                IMyShipController controller = controllers[i];
+                if (controller.CanControlShip && controller.IsUnderControl)
                 { return controller; }
             }
             return null;
