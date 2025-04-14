@@ -23,7 +23,12 @@ namespace Khjin.CombatInterdiction
         private List<long> activeContacts = new List<long>();
         private ConcurrentQueue<CombatMessage> combatMessages = new ConcurrentQueue<CombatMessage>();
 
-        private const float GRAVITY = 9.81f;        // Constant gravity in m/s²
+        private const float GRAVITY = 9.81f;                        // Earth gravtiy in m/s²
+        private const float AIR_DENSITY = 1.225f;                   // Earth air density at sea level in kg/m³
+        private const float WATER_DENSITY = 1026.0f;                // Earth sea water density at sea level in kg/m³
+        private const float LARGE_GRID_DRAG_COEFFICIENT = 0.105f;   // Drag coefficient of a large grid cube
+        private const float SMALL_GRID_DRAG_COEFFICIENT = 0.047f;   // Drag coefficient of a small grid sphere
+        private const float FRONT_AREA_FACTOR = 0.05f;              // Fake front area drag from mass
 
         private class CombatMessage
         {
@@ -253,8 +258,8 @@ namespace Khjin.CombatInterdiction
         {
             float weightKg = ship.Grid.Physics.Mass;
             float maxThrust = settings.largeGridSpeedFactor * (float)Math.Pow(weightKg, settings.largeGridWeightFactor + 1) * GRAVITY;
-            float frontalArea = weightKg * settings.frontalAreaFactor;
-            float fluidDrag = GetFluidDensity(ship) * settings.shipDragCoefficient * frontalArea;
+            float frontalArea = weightKg * FRONT_AREA_FACTOR;
+            float fluidDrag = GetFluidDensity(ship) * LARGE_GRID_DRAG_COEFFICIENT * frontalArea;
             fluidDrag = fluidDrag <= 0 ? 1 : fluidDrag;
             return (float)Math.Sqrt((2 * maxThrust) / fluidDrag);
         }
@@ -263,8 +268,8 @@ namespace Khjin.CombatInterdiction
         {
             float weightKg = ship.Grid.Physics.Mass;
             float maxThrust = settings.largeGridJetSpeedFactor * (float)Math.Pow(weightKg, settings.largeGridJetWeightFactor + 1) * GRAVITY;
-            float frontalArea = weightKg * settings.frontalAreaFactor;
-            float fluidDrag = GetFluidDensity(ship) * settings.shipDragCoefficient * frontalArea;
+            float frontalArea = weightKg * FRONT_AREA_FACTOR;
+            float fluidDrag = GetFluidDensity(ship) * LARGE_GRID_DRAG_COEFFICIENT * frontalArea;
             fluidDrag = fluidDrag <= 0 ? 1 : fluidDrag;
             return (float)Math.Sqrt((2 * maxThrust) / fluidDrag);
         }
@@ -273,8 +278,8 @@ namespace Khjin.CombatInterdiction
         {
             float weightKg = ship.Grid.Physics.Mass;
             float thrust = settings.smallGridSpeedFactor * (float)Math.Pow(weightKg, settings.smallGridWeightFactor + 1) * GRAVITY;
-            float frontalArea = weightKg * settings.frontalAreaFactor;
-            float fluidDrag = GetFluidDensity(ship) * settings.aircraftDragCoefficient * frontalArea;
+            float frontalArea = weightKg * FRONT_AREA_FACTOR;
+            float fluidDrag = GetFluidDensity(ship) * SMALL_GRID_DRAG_COEFFICIENT * frontalArea;
             fluidDrag = fluidDrag <= 0 ? 1 : fluidDrag;
             return (float)Math.Sqrt((2 * thrust) / fluidDrag);
         }
@@ -283,8 +288,8 @@ namespace Khjin.CombatInterdiction
         {
             float weightKg = ship.Mass;
             float thrust = settings.smallGridJetSpeedFactor * (float)Math.Pow(weightKg, settings.smallGridJetWeightFactor + 1) * GRAVITY;
-            float frontalArea = weightKg * settings.frontalAreaFactor;
-            float fluidDrag = GetFluidDensity(ship) * settings.aircraftDragCoefficient * frontalArea;
+            float frontalArea = weightKg * FRONT_AREA_FACTOR;
+            float fluidDrag = GetFluidDensity(ship) * SMALL_GRID_DRAG_COEFFICIENT * frontalArea;
             fluidDrag = fluidDrag <= 0 ? 1 : fluidDrag;
             return (float)Math.Sqrt((2 * thrust) / fluidDrag);
         }
@@ -293,11 +298,11 @@ namespace Khjin.CombatInterdiction
         {
             if (ship.InWater)
             {
-                return settings.waterDensity * (ship.IsSubmerged ? 1.1f : 1.0f);
+                return WATER_DENSITY * (ship.IsSubmerged ? 1.1f : 1.0f);
             }
             else if (ship.InAtmosphere)
             {
-                return settings.airDensity * ship.AirDensity;
+                return AIR_DENSITY * ship.AirDensity;
             }
             else
             {

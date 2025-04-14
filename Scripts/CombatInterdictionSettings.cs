@@ -38,13 +38,6 @@ namespace Khjin.CombatInterdiction
         public float smallGridJetSpeedFactor;
         public float smallGridJetWeightFactor;
 
-        // Environment and Additional Factors
-        public float airDensity;
-        public float waterDensity;
-        public float shipDragCoefficient;
-        public float aircraftDragCoefficient;
-        public float frontalAreaFactor;
-
         private Dictionary<string, SettingLimits> settingLimits;
 
         public CombatInterdictionSettings()
@@ -126,83 +119,51 @@ namespace Khjin.CombatInterdiction
             // Per Grid Speed Scaling
             settingLimits.Add(nameof(largeGridSpeedFactor), new FloatLimits()
             {
-                DefaultValue = 0.8f,
+                DefaultValue = 5690f,
                 MinValue = 0.01f,
-                MaxValue = 5.0f,
+                MaxValue = 50000f,
             });
             settingLimits.Add(nameof(largeGridWeightFactor), new FloatLimits()
             {
-                DefaultValue = -0.05f,
-                MinValue = -0.9f,
-                MaxValue = -0.01f,
+                DefaultValue = -0.219f,
+                MinValue = -0.9999f,
+                MaxValue = -0.0001f,
             });
             settingLimits.Add(nameof(largeGridJetSpeedFactor), new FloatLimits()
             {
-                DefaultValue = 0.8f,
+                DefaultValue = 5690f,
                 MinValue = 0.01f,
-                MaxValue = 5.0f,
+                MaxValue = 50000f,
             });
             settingLimits.Add(nameof(largeGridJetWeightFactor), new FloatLimits()
             {
-                DefaultValue = -0.05f,
-                MinValue = -0.9f,
-                MaxValue = -0.01f,
+                DefaultValue = -0.219f,
+                MinValue = -0.9999f,
+                MaxValue = -0.0001f,
             });
             settingLimits.Add(nameof(smallGridSpeedFactor), new FloatLimits()
             {
-                DefaultValue = 12.0f,
-                MinValue = 1.0f,
+                DefaultValue = 375f,
+                MinValue = 0.01f,
                 MaxValue = 5000.0f,
             });
             settingLimits.Add(nameof(smallGridWeightFactor), new FloatLimits()
             {
-                DefaultValue = -0.165f,
-                MinValue = -0.9f,
-                MaxValue = -0.01f,
+                DefaultValue = -0.507f,
+                MinValue = -0.9999f,
+                MaxValue = -0.0001f,
             });
             settingLimits.Add(nameof(smallGridJetSpeedFactor), new FloatLimits()
             {
-                DefaultValue = 18.2f,
-                MinValue = 1.0f,
+                DefaultValue = 3150f,
+                MinValue = 0.01f,
                 MaxValue = 5000.0f,
             });
             settingLimits.Add(nameof(smallGridJetWeightFactor), new FloatLimits()
             {
-                DefaultValue = -0.175f,
-                MinValue = -0.9f,
-                MaxValue = -0.01f,
-            });
-
-            // Environment and Additional Factors
-            settingLimits.Add(nameof(airDensity), new FloatLimits()
-            {
-                DefaultValue = 1.225f,
-                MinValue = 0.5f,
-                MaxValue = 5.0f,
-            });
-            settingLimits.Add(nameof(waterDensity), new FloatLimits()
-            {
-                DefaultValue = 1.0f,
-                MinValue = 1.0f,
-                MaxValue = 20f,
-            });
-            settingLimits.Add(nameof(shipDragCoefficient), new FloatLimits()
-            {
-                DefaultValue = 0.1f,
-                MinValue = 0.01f,
-                MaxValue = 1.0f,
-            });
-            settingLimits.Add(nameof(aircraftDragCoefficient), new FloatLimits()
-            {
-                DefaultValue = 0.03f,
-                MinValue = 0.001f,
-                MaxValue = 1.0f,
-            });
-            settingLimits.Add(nameof(frontalAreaFactor), new FloatLimits()
-            {
-                DefaultValue = 0.05f,
-                MinValue = 0.01f,
-                MaxValue = 1.0f,
+                DefaultValue = -0.657f,
+                MinValue = -0.9999f,
+                MaxValue = -0.0001f,
             });
 
             // Note: This must go AFTER defining the limits as defaults
@@ -247,13 +208,6 @@ namespace Khjin.CombatInterdiction
             largeGridJetWeightFactor = ((FloatLimits)settingLimits[nameof(largeGridJetWeightFactor)]).DefaultValue;
             smallGridJetSpeedFactor = ((FloatLimits)settingLimits[nameof(smallGridJetSpeedFactor)]).DefaultValue;
             smallGridJetWeightFactor = ((FloatLimits)settingLimits[nameof(smallGridJetWeightFactor)]).DefaultValue;
-
-            // Environment and Additional Factors
-            airDensity = ((FloatLimits)settingLimits[nameof(airDensity)]).DefaultValue;
-            waterDensity = ((FloatLimits)settingLimits[nameof(waterDensity)]).DefaultValue;
-            shipDragCoefficient = ((FloatLimits)settingLimits[nameof(shipDragCoefficient)]).DefaultValue;
-            aircraftDragCoefficient = ((FloatLimits)settingLimits[nameof(aircraftDragCoefficient)]).DefaultValue;
-            frontalAreaFactor = ((FloatLimits)settingLimits[nameof(frontalAreaFactor)]).DefaultValue;
         }
 
         private void LoadSettings()
@@ -341,13 +295,6 @@ namespace Khjin.CombatInterdiction
             largeGridJetWeightFactor = (float)iniUtil.Get(SECTION_NAME, nameof(largeGridJetWeightFactor)).ToDouble();
             smallGridJetSpeedFactor = (float)iniUtil.Get(SECTION_NAME, nameof(smallGridJetSpeedFactor)).ToDouble();
             smallGridJetWeightFactor = (float)iniUtil.Get(SECTION_NAME, nameof(smallGridJetWeightFactor)).ToDouble();
-
-            // Environment and Additional Factors
-            airDensity = (float)iniUtil.Get(SECTION_NAME, nameof(airDensity)).ToDouble();
-            waterDensity = (float)iniUtil.Get(SECTION_NAME, nameof(waterDensity)).ToDouble();
-            shipDragCoefficient = (float)iniUtil.Get(SECTION_NAME, nameof(shipDragCoefficient)).ToDouble();
-            aircraftDragCoefficient = (float)iniUtil.Get(SECTION_NAME, nameof(aircraftDragCoefficient)).ToDouble();
-            frontalAreaFactor = (float)iniUtil.Get(SECTION_NAME, nameof(frontalAreaFactor)).ToDouble();
         }
 
         private void WriteSettings()
@@ -377,13 +324,6 @@ namespace Khjin.CombatInterdiction
             iniUtil.Set(SECTION_NAME, nameof(largeGridJetWeightFactor), largeGridJetWeightFactor);
             iniUtil.Set(SECTION_NAME, nameof(smallGridJetSpeedFactor), smallGridJetSpeedFactor);
             iniUtil.Set(SECTION_NAME, nameof(smallGridJetWeightFactor), smallGridJetWeightFactor);
-
-            // Environment and Additional Factors
-            iniUtil.Set(SECTION_NAME, nameof(airDensity), airDensity);
-            iniUtil.Set(SECTION_NAME, nameof(waterDensity), waterDensity);
-            iniUtil.Set(SECTION_NAME, nameof(shipDragCoefficient), shipDragCoefficient);
-            iniUtil.Set(SECTION_NAME, nameof(aircraftDragCoefficient), aircraftDragCoefficient);
-            iniUtil.Set(SECTION_NAME, nameof(frontalAreaFactor), frontalAreaFactor);
         }
 
         public string GetAvailableSettings()
@@ -413,14 +353,7 @@ namespace Khjin.CombatInterdiction
             $"{CombatInterdictionCommands.COMMAND_PREFIX}{nameof(smallGridSpeedFactor)}, " +
             $"{CombatInterdictionCommands.COMMAND_PREFIX}{nameof(smallGridWeightFactor)}, " +
             $"{CombatInterdictionCommands.COMMAND_PREFIX}{nameof(smallGridJetSpeedFactor)}, " +
-            $"{CombatInterdictionCommands.COMMAND_PREFIX}{nameof(smallGridJetWeightFactor)}, " +
-
-            // Environment and Additional Factors
-            $"{CombatInterdictionCommands.COMMAND_PREFIX}{nameof(airDensity)}, " +
-            $"{CombatInterdictionCommands.COMMAND_PREFIX}{nameof(waterDensity)}, " +
-            $"{CombatInterdictionCommands.COMMAND_PREFIX}{nameof(shipDragCoefficient)}, " +
-            $"{CombatInterdictionCommands.COMMAND_PREFIX}{nameof(aircraftDragCoefficient)}, " +
-            $"{CombatInterdictionCommands.COMMAND_PREFIX}{nameof(frontalAreaFactor)}";
+            $"{CombatInterdictionCommands.COMMAND_PREFIX}{nameof(smallGridJetWeightFactor)}";
 
             return availableSettings;
         }
@@ -452,14 +385,7 @@ namespace Khjin.CombatInterdiction
                 $"{nameof(smallGridSpeedFactor)}={smallGridSpeedFactor}, " +
                 $"{nameof(smallGridWeightFactor)}={smallGridWeightFactor}, " +
                 $"{nameof(smallGridJetSpeedFactor)}={smallGridJetSpeedFactor}, " +
-                $"{nameof(smallGridJetWeightFactor)}={smallGridJetWeightFactor}, " +
-
-                // Environment and Additional Factors
-                $"{nameof(airDensity)}={airDensity}, " +
-                $"{nameof(waterDensity)}={waterDensity}, " +
-                $"{nameof(shipDragCoefficient)}={shipDragCoefficient}, " +
-                $"{nameof(aircraftDragCoefficient)}={aircraftDragCoefficient}, " +
-                $"{nameof(frontalAreaFactor)}={frontalAreaFactor}";
+                $"{nameof(smallGridJetWeightFactor)}={smallGridJetWeightFactor}";
 
             return currentSettings;
         }
@@ -492,13 +418,6 @@ namespace Khjin.CombatInterdiction
                 case nameof(smallGridWeightFactor): return smallGridWeightFactor.ToString();
                 case nameof(smallGridJetSpeedFactor): return smallGridJetSpeedFactor.ToString();
                 case nameof(smallGridJetWeightFactor): return smallGridJetWeightFactor.ToString();
-
-                // Environment and Additional Factors
-                case nameof(airDensity): return airDensity.ToString();
-                case nameof(waterDensity): return waterDensity.ToString();
-                case nameof(shipDragCoefficient): return shipDragCoefficient.ToString();
-                case nameof(aircraftDragCoefficient): return aircraftDragCoefficient.ToString();
-                case nameof(frontalAreaFactor): return frontalAreaFactor.ToString();
                 default: return string.Empty;
             }
         }
@@ -544,13 +463,6 @@ namespace Khjin.CombatInterdiction
                         case nameof(smallGridWeightFactor): smallGridWeightFactor = float.Parse(value); break;
                         case nameof(smallGridJetSpeedFactor): smallGridJetSpeedFactor = float.Parse(value); break;
                         case nameof(smallGridJetWeightFactor): smallGridJetWeightFactor = float.Parse(value); break;
-
-                        // Environment and Additional Factors
-                        case nameof(airDensity): airDensity = float.Parse(value); break;
-                        case nameof(waterDensity): waterDensity = float.Parse(value); break;
-                        case nameof(shipDragCoefficient): shipDragCoefficient = float.Parse(value); break;
-                        case nameof(aircraftDragCoefficient): aircraftDragCoefficient = float.Parse(value); break;
-                        case nameof(frontalAreaFactor): frontalAreaFactor = float.Parse(value); break;
                         default: return false;
                     }
                 }
