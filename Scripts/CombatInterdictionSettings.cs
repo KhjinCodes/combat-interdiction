@@ -8,7 +8,7 @@ namespace Khjin.CombatInterdiction
 {
     public class CombatInterdictionSettings
     {
-        private const string configversion = "1.0.2";
+        private const string configversion = "1.0.3";
         private const string SECTION_NAME = "Combat Interdiction Settings";
         private const string SETTINGS_FILENAME = "combat_interdiction_settings.cfg";
         private MyIni iniUtil = null;
