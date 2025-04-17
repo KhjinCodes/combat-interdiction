@@ -16,8 +16,9 @@ namespace Khjin.CombatInterdiction
         public float AirDensity;
         public bool InWater;
         public bool IsSubmerged;
-        public List<IMyThrust> Thrusters;
         public List<IMyCubeGrid> Grids;
+        public List<IMyThrust> Thrusters;
+        public List<IMyMotorSuspension> Wheels;
 
         public Ship(IMyCubeGrid grid)
         {
@@ -25,8 +26,9 @@ namespace Khjin.CombatInterdiction
             InterdictionDuration = 0;
             SpeedBuffer = 0;
             SpeedBufferDecayRate = 0;
-            Thrusters = new List<IMyThrust>();
             Grids = new List<IMyCubeGrid>();
+            Thrusters = new List<IMyThrust>();
+            Wheels = new List<IMyMotorSuspension>();
         }
 
         public long EntityId
@@ -42,6 +44,11 @@ namespace Khjin.CombatInterdiction
         public float Mass
         {
             get { return Grid.Physics.Mass; }
+        }
+
+        public float Volume
+        {
+            get { return (float) Grid.WorldAABB.Size.Volume; }
         }
 
         public bool InCombat

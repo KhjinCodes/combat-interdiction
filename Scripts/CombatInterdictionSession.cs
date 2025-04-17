@@ -10,7 +10,7 @@ using VRage.Utils;
 
 namespace Khjin.CombatInterdiction
 {
-    [MySessionComponentDescriptor(MyUpdateOrder.AfterSimulation)]
+    [MySessionComponentDescriptor(MyUpdateOrder.BeforeSimulation)]
     public partial class CombatInterdictionSession : MySessionComponentBase
     {
         public static CombatInterdictionSession Instance { get; private set; }
@@ -169,7 +169,7 @@ namespace Khjin.CombatInterdiction
             }
         }
 
-        public override void UpdateAfterSimulation()
+        public override void UpdateBeforeSimulation()
         {
             // Show welcome message
             Messaging.WelcomePlayer();

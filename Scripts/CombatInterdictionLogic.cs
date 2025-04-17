@@ -181,8 +181,8 @@ namespace Khjin.CombatInterdiction
             RefreshThrusters(ship);
 
             if (ship.Thrusters.Count == 0
-            || (GetControllingPlayerIdentiyId(ship) == -1 && ship.BoundingBox.Volume <= settings.minimumGridVolume)
-            || (Utilities.IsNpcOwned(ship.Grid) && !ship.InCombat))
+            || (Utilities.IsNpcOwned(ship.Grid) && !ship.InCombat)
+            || (GetControllingPlayerIdentiyId(ship) == -1 && ship.Volume <= settings.minimumGridVolume))
             { return; }
 
             RefreshAtmosphereStatus(ship);
@@ -242,7 +242,16 @@ namespace Khjin.CombatInterdiction
                 ship.SpeedBuffer = ship.SpeedBuffer < 0 ? 0 : ship.SpeedBuffer;
                 Vector3 direction = ship.Grid.Physics.LinearVelocity.Normalized();
                 Vector3 maxLinearVelocity = direction * (shipMaxSpeed + ship.SpeedBuffer);
+
+                // Finalize with the main grid physics
                 ship.Grid.Physics.SetSpeeds(maxLinearVelocity, ship.AngularVelocity);
+
+                // Add handling for wheels
+                for (int i = (ship.Wheels.Count - 1); i >= 0; i--)
+                {
+                    IMyMotorSuspension wheel = ship.Wheels[i];
+                    wheel.TopGrid.Physics.SetSpeeds(maxLinearVelocity, wheel.TopGrid.Physics.AngularVelocity);
+                }
             }
             else
             {
@@ -411,6 +420,7 @@ namespace Khjin.CombatInterdiction
         private void RefreshThrusters(Ship ship)
         {
             ship.Grids.Clear();
+            ship.Wheels.Clear();
             ship.Thrusters.Clear();
             var group = ship.Grid.GetGridGroup(GridLinkTypeEnum.Mechanical);
             group.GetGrids(ship.Grids);
@@ -418,6 +428,7 @@ namespace Khjin.CombatInterdiction
             {
                 IMyCubeGrid grid = ship.Grids[i];
                 ship.Thrusters.AddRange(grid.GetFatBlocks<IMyThrust>());
+                ship.Wheels.AddRange(grid.GetFatBlocks<IMyMotorSuspension>());
             }
         }
 
@@ -451,19 +462,6 @@ namespace Khjin.CombatInterdiction
             }
             catch
             { /* Failed to call WaterMod. Table flip! */ }
-        }
-    
-        private IMyShipController GetControlSeat(Ship ship)
-        {
-            List<IMyShipController> controllers = 
-                new List<IMyShipController>(ship.Grid.GetFatBlocks<IMyShipController>());
-            for (int i = (controllers.Count-1); i >= 0; i--)
-            {
-                IMyShipController controller = controllers[i];
-                if (controller.CanControlShip && controller.IsUnderControl)
-                { return controller; }
-            }
-            return null;
         }
     }
 }
