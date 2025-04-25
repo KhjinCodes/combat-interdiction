@@ -39,6 +39,10 @@ namespace Khjin.CombatInterdiction
         private const float MODDED_SMALL_GRID_MAX_SPEED = 500f;
         private const float MODDED_LARGE_GRID_MAX_SPEED = 500f;
 
+        // Thread sync flags
+        bool isPendingShipUpdate = true;
+        bool isPendingMessagesUpdate = true;
+
         public CombatInterdictionSession()
         {
             Messaging = new CombatInterdictionMessaging();
@@ -179,8 +183,17 @@ namespace Khjin.CombatInterdiction
             {
                 if (Utilities.IsServer())
                 {
-                    MyAPIGateway.Parallel.Start(Logic.UpdateShips);
-                    MyAPIGateway.Parallel.Start(Logic.ProcessCombatMessages);
+                    // Added to limit the number of threads processing.
+                    if (!isPendingShipUpdate)
+                    {
+                        isPendingShipUpdate = false;
+                        MyAPIGateway.Parallel.Start(Logic.UpdateShips, OnShipsUpdated);
+                    }
+                    if (isPendingMessagesUpdate)
+                    {
+                        isPendingMessagesUpdate = false;
+                        MyAPIGateway.Parallel.Start(Logic.ProcessCombatMessages, OnCombatMessagesProcessed);
+                    }
                 }
             }
             catch (Exception e)
@@ -188,6 +201,16 @@ namespace Khjin.CombatInterdiction
                 MyLog.Default.WriteLineAndConsole($"{e.Message}\n{e.StackTrace}");
                 Messaging.NotifyPlayer($"[ ERROR: {GetType().FullName}: {e.Message} | Send SpaceEngineers.Log to mod author ]", "Red");
             }
+        }
+
+        private void OnShipsUpdated()
+        {
+            isPendingShipUpdate = true;
+        }
+
+        private void OnCombatMessagesProcessed()
+        {
+            isPendingMessagesUpdate = true;
         }
 
         private void MessageEntered(string messageText, ref bool sendToOthers)

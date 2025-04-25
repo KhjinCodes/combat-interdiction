@@ -12,6 +12,7 @@ using VRage.ModAPI;
 using VRage.Utils;
 using VRageMath;
 using Jakaria.API;
+using System.Linq;
 
 namespace Khjin.CombatInterdiction
 {
@@ -95,6 +96,8 @@ namespace Khjin.CombatInterdiction
             // Register or update each combatant
             for (int i = (entitiesInSpehere.Count - 1); i >= 0; i--)
             {
+                if (!entitiesInSpehere.IsValidIndex(i)) { continue; }
+
                 MyEntity entity = entitiesInSpehere[i];
 
                 // Only handle grids not due for clean-up
@@ -249,6 +252,7 @@ namespace Khjin.CombatInterdiction
                 // Add handling for wheels
                 for (int i = (ship.Wheels.Count - 1); i >= 0; i--)
                 {
+                    if (!ship.Wheels.IsValidIndex(i)) { continue; }
                     IMyMotorSuspension wheel = ship.Wheels[i];
                     wheel.TopGrid.Physics.SetSpeeds(maxLinearVelocity, wheel.TopGrid.Physics.AngularVelocity);
                 }
@@ -331,6 +335,8 @@ namespace Khjin.CombatInterdiction
             {
                 for (int i = (ship.Thrusters.Count - 1); i >= 0; i--)
                 {
+                    if (!ship.Thrusters.IsValidIndex(i)) { continue; }
+
                     IMyThrust thruster = ship.Thrusters[i];
                     if (thruster == null || !thruster.IsFunctional) { continue; }
 
@@ -358,6 +364,8 @@ namespace Khjin.CombatInterdiction
             List<IMyCockpit> cockpits = new List<IMyCockpit>(ship.Grid.GetFatBlocks<IMyCockpit>());
             for (int i = (cockpits.Count-1); i >= 0; i--)
             {
+                if (!cockpits.IsValidIndex(i)) { continue; }
+
                 IMyCockpit cockpit = cockpits[i];
                 var logic = cockpit.GameLogic?.GetAs<CombatInterdictionBlock>();
                 if (logic != null && cockpit.IsFunctional && cockpit.CanControlShip && cockpit.IsUnderControl)
@@ -376,6 +384,8 @@ namespace Khjin.CombatInterdiction
             int activeThrusterCount = 0;
             for (int i = (ship.Thrusters.Count - 1); i >= 0; i--)
             {
+                if (!ship.Thrusters.IsValidIndex(i)) { continue; }
+
                 IMyThrust thruster = ship.Thrusters[i];
                 float currentThrust = thruster.CurrentThrust;
                 if (Math.Abs(currentThrust) < 0.0001f) { continue; }
@@ -387,6 +397,8 @@ namespace Khjin.CombatInterdiction
             float maxThrust = ship.Grid.Physics.Mass * GRAVITY * settings.largeGridBoostTwr;
             for (int i = (ship.Thrusters.Count - 1); i >= 0; i--)
             {
+                if (!ship.Thrusters.IsValidIndex(i)) { continue; }
+
                 IMyThrust thruster = ship.Thrusters[i];
                 float currentThrust = thruster.CurrentThrust;
                 if (Math.Abs(currentThrust) < 0.0001f) { continue; }
@@ -422,13 +434,21 @@ namespace Khjin.CombatInterdiction
             ship.Grids.Clear();
             ship.Wheels.Clear();
             ship.Thrusters.Clear();
+
             var group = ship.Grid.GetGridGroup(GridLinkTypeEnum.Mechanical);
             group.GetGrids(ship.Grids);
+
             for (int i = (ship.Grids.Count - 1); i >= 0; i--)
             {
+                if (!ship.Grids.IsValidIndex(i)) { continue; }
+
                 IMyCubeGrid grid = ship.Grids[i];
-                ship.Thrusters.AddRange(grid.GetFatBlocks<IMyThrust>());
-                ship.Wheels.AddRange(grid.GetFatBlocks<IMyMotorSuspension>());
+                
+                var thrusters = grid.GetFatBlocks<IMyThrust>();
+                if (thrusters.Count() > 0) { ship.Thrusters.AddRange(thrusters); }
+                
+                var wheels = grid.GetFatBlocks<IMyMotorSuspension>();
+                if (wheels.Count() > 0) { ship.Wheels.AddRange(wheels); }
             }
         }
 
