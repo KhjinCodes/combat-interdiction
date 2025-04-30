@@ -8,27 +8,27 @@ namespace Khjin.CombatInterdiction
 {
     public class Ship
     {
-        public IMyCubeGrid Grid { private set; get; }
+        public readonly IMyCubeGrid Grid;
         public int InterdictionDuration;
-        public float SpeedBuffer;
-        public float SpeedBufferDecayRate;
         public float NaturalGravity;
         public float AirDensity;
         public bool InWater;
         public bool IsSubmerged;
-        public List<IMyCubeGrid> Grids;
-        public List<IMyThrust> Thrusters;
-        public List<IMyMotorSuspension> Wheels;
+        public bool IsOnBoost;
+        public float CurrentLinearSpeed;
+        public float CurrentAngularSpeed;
+        private readonly List<IMyCubeGrid> grids;
+        private readonly List<IMyThrust> thrusters;
+        private readonly object gridLock = new object();
+        private readonly object thrusterLock = new object();
+        private readonly object wheelLock = new object();
 
         public Ship(IMyCubeGrid grid)
         {
-            Grid = Utilities.GetBaseGrid(grid);
+            Grid = grid;
+            grids = new List<IMyCubeGrid>();
+            thrusters = new List<IMyThrust>();
             InterdictionDuration = 0;
-            SpeedBuffer = 0;
-            SpeedBufferDecayRate = 0;
-            Grids = new List<IMyCubeGrid>();
-            Thrusters = new List<IMyThrust>();
-            Wheels = new List<IMyMotorSuspension>();
         }
 
         public long EntityId
@@ -66,6 +66,11 @@ namespace Khjin.CombatInterdiction
             get { return Math.Abs(NaturalGravity) > 0; }
         }
 
+        public IMyGridTerminalSystem GTS
+        {
+            get { return MyAPIGateway.TerminalActionsHelper.GetTerminalSystemForGrid(Grid); }
+        }
+
         public Vector3 LinearVelocity
         {
             get { return Grid.Physics.LinearVelocity; }
@@ -89,6 +94,27 @@ namespace Khjin.CombatInterdiction
         public bool MarkedForClose
         {
             get { return Grid.MarkedForClose; }
+        }
+    
+        public void HoldThrusters(Action<List<IMyThrust>> action)
+        {
+            lock(thrusterLock)
+            {
+                action(thrusters);
+            }
+        }
+
+        public void HoldGrids(Action<List<IMyCubeGrid>> action)
+        {
+            lock (gridLock)
+            {
+                action(grids);
+            }
+        }
+
+        public int ThrusterCount
+        {
+            get { lock (thrusterLock) { return thrusters.Count; } }
         }
     }
 }

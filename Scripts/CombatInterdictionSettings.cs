@@ -38,6 +38,10 @@ namespace Khjin.CombatInterdiction
         public float smallGridJetSpeedFactor;
         public float smallGridJetWeightFactor;
 
+        // Per Grid Turn Rate Scaling
+        public float smallGridTurnRateWeightFactor;
+        public float smallGridTurnRateSpeedFactor;
+
         private Dictionary<string, SettingLimits> settingLimits;
 
         public CombatInterdictionSettings()
@@ -73,7 +77,7 @@ namespace Khjin.CombatInterdiction
             });
             settingLimits.Add(nameof(smallGridMaxSpeed), new FloatLimits()
             {
-                DefaultValue = 250.0f,
+                DefaultValue = 300.0f,
                 MinValue = 5,
                 MaxValue = 600,
             });
@@ -99,9 +103,9 @@ namespace Khjin.CombatInterdiction
             });
             settingLimits.Add(nameof(largeGridBoostTwr), new FloatLimits()
             {
-                DefaultValue = 3.5f,
-                MinValue = 1.0f,
-                MaxValue = 50.0f
+                DefaultValue = 5.0f,
+                MinValue = 0.01f,
+                MaxValue = 15.0f
             });
             settingLimits.Add(nameof(interdictionDuration), new IntLimits()
             {
@@ -166,6 +170,20 @@ namespace Khjin.CombatInterdiction
                 MaxValue = -0.0001f,
             });
 
+            // Per Grid Turn Rate Scaling
+            settingLimits.Add(nameof(smallGridTurnRateWeightFactor), new FloatLimits()
+            {
+                DefaultValue = 0.5f,
+                MinValue = 0.01f,
+                MaxValue = 10.0f,
+            });
+            settingLimits.Add(nameof(smallGridTurnRateSpeedFactor), new FloatLimits()
+            {
+                DefaultValue = 0.3f,
+                MinValue = 0.01f,
+                MaxValue = 10.0f,
+            });
+
             // Note: This must go AFTER defining the limits as defaults
             // will also come from the limits data.
             LoadSettings();
@@ -208,6 +226,10 @@ namespace Khjin.CombatInterdiction
             largeGridJetWeightFactor = ((FloatLimits)settingLimits[nameof(largeGridJetWeightFactor)]).DefaultValue;
             smallGridJetSpeedFactor = ((FloatLimits)settingLimits[nameof(smallGridJetSpeedFactor)]).DefaultValue;
             smallGridJetWeightFactor = ((FloatLimits)settingLimits[nameof(smallGridJetWeightFactor)]).DefaultValue;
+
+            // Per Grid Turn Rate Scaling
+            smallGridTurnRateWeightFactor = ((FloatLimits)settingLimits[nameof(smallGridTurnRateWeightFactor)]).DefaultValue;
+            smallGridTurnRateSpeedFactor = ((FloatLimits)settingLimits[nameof(smallGridTurnRateSpeedFactor)]).DefaultValue;
         }
 
         private void LoadSettings()
@@ -295,6 +317,10 @@ namespace Khjin.CombatInterdiction
             largeGridJetWeightFactor = (float)iniUtil.Get(SECTION_NAME, nameof(largeGridJetWeightFactor)).ToDouble();
             smallGridJetSpeedFactor = (float)iniUtil.Get(SECTION_NAME, nameof(smallGridJetSpeedFactor)).ToDouble();
             smallGridJetWeightFactor = (float)iniUtil.Get(SECTION_NAME, nameof(smallGridJetWeightFactor)).ToDouble();
+
+            // Per Grid Turn Rate Scaling
+            smallGridTurnRateWeightFactor = (float)iniUtil.Get(SECTION_NAME, nameof(smallGridTurnRateWeightFactor)).ToDouble();
+            smallGridTurnRateSpeedFactor = (float)iniUtil.Get(SECTION_NAME, nameof(smallGridTurnRateSpeedFactor)).ToDouble();
         }
 
         private void WriteSettings()
@@ -324,6 +350,10 @@ namespace Khjin.CombatInterdiction
             iniUtil.Set(SECTION_NAME, nameof(largeGridJetWeightFactor), largeGridJetWeightFactor);
             iniUtil.Set(SECTION_NAME, nameof(smallGridJetSpeedFactor), smallGridJetSpeedFactor);
             iniUtil.Set(SECTION_NAME, nameof(smallGridJetWeightFactor), smallGridJetWeightFactor);
+
+            // Per Grid Turn Rate Scaling
+            iniUtil.Set(SECTION_NAME, nameof(smallGridTurnRateWeightFactor), smallGridTurnRateWeightFactor);
+            iniUtil.Set(SECTION_NAME, nameof(smallGridTurnRateSpeedFactor), smallGridTurnRateSpeedFactor);
         }
 
         public string GetAvailableSettings()
@@ -353,7 +383,11 @@ namespace Khjin.CombatInterdiction
             $"{CombatInterdictionCommands.COMMAND_PREFIX}{nameof(smallGridSpeedFactor)}, " +
             $"{CombatInterdictionCommands.COMMAND_PREFIX}{nameof(smallGridWeightFactor)}, " +
             $"{CombatInterdictionCommands.COMMAND_PREFIX}{nameof(smallGridJetSpeedFactor)}, " +
-            $"{CombatInterdictionCommands.COMMAND_PREFIX}{nameof(smallGridJetWeightFactor)}";
+            $"{CombatInterdictionCommands.COMMAND_PREFIX}{nameof(smallGridJetWeightFactor)}, " +
+
+            // Per Grid Turn Rate Scaling
+            $"{CombatInterdictionCommands.COMMAND_PREFIX}{nameof(smallGridTurnRateWeightFactor)}, " +
+            $"{CombatInterdictionCommands.COMMAND_PREFIX}{nameof(smallGridTurnRateSpeedFactor)}";
 
             return availableSettings;
         }
@@ -385,7 +419,11 @@ namespace Khjin.CombatInterdiction
                 $"{nameof(smallGridSpeedFactor)}={smallGridSpeedFactor}, " +
                 $"{nameof(smallGridWeightFactor)}={smallGridWeightFactor}, " +
                 $"{nameof(smallGridJetSpeedFactor)}={smallGridJetSpeedFactor}, " +
-                $"{nameof(smallGridJetWeightFactor)}={smallGridJetWeightFactor}";
+                $"{nameof(smallGridJetWeightFactor)}={smallGridJetWeightFactor}, " +
+
+                // Per Grid Turn Rate Scaling
+                $"{nameof(smallGridTurnRateWeightFactor)}={smallGridTurnRateWeightFactor}, " +
+                $"{nameof(smallGridTurnRateSpeedFactor)}={smallGridTurnRateSpeedFactor}";
 
             return currentSettings;
         }
@@ -418,6 +456,10 @@ namespace Khjin.CombatInterdiction
                 case nameof(smallGridWeightFactor): return smallGridWeightFactor.ToString();
                 case nameof(smallGridJetSpeedFactor): return smallGridJetSpeedFactor.ToString();
                 case nameof(smallGridJetWeightFactor): return smallGridJetWeightFactor.ToString();
+
+                // Per Grid Turn Rate Scaling
+                case nameof(smallGridTurnRateWeightFactor): return smallGridTurnRateWeightFactor.ToString();
+                case nameof(smallGridTurnRateSpeedFactor): return smallGridTurnRateSpeedFactor.ToString();
                 default: return string.Empty;
             }
         }
@@ -463,6 +505,10 @@ namespace Khjin.CombatInterdiction
                         case nameof(smallGridWeightFactor): smallGridWeightFactor = float.Parse(value); break;
                         case nameof(smallGridJetSpeedFactor): smallGridJetSpeedFactor = float.Parse(value); break;
                         case nameof(smallGridJetWeightFactor): smallGridJetWeightFactor = float.Parse(value); break;
+
+                        // Per Grid Turn Rate Scaling
+                        case nameof(smallGridTurnRateWeightFactor): smallGridTurnRateWeightFactor = float.Parse(value); break;
+                        case nameof(smallGridTurnRateSpeedFactor): smallGridTurnRateSpeedFactor = float.Parse(value); break;
                         default: return false;
                     }
                 }
