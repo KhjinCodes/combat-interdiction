@@ -15,7 +15,7 @@ namespace Khjin.CombatInterdiction
     {
         public static CombatInterdictionSession Instance { get; private set; }
 
-        public const string MOD_VERSION = "1.0";
+        public const string MOD_VERSION = "1.4";
         public const string MOD_NAME = "Combat Interdiction";
 
         // Handles messages through chat input and from other sessions (players, server)
@@ -28,7 +28,7 @@ namespace Khjin.CombatInterdiction
         public CombatInterdictionCommands Commands { get; private set; } = null;
 
         // Handles the main logic of the mod
-        private CombatInterdictionLogic Logic;
+        public CombatInterdictionLogic Logic;
 
         // Tracks ship instances
         private Dictionary<long, Ship> _ships;
@@ -114,31 +114,7 @@ namespace Khjin.CombatInterdiction
             grid = Utilities.GetBaseGrid(grid);
             if (grid.Physics != null)
             {
-                if(!_ships.ContainsKey(entity.EntityId))
-                {
-                    grid.OnMarkForClose += OnMarkForClose;
-                    Ship ship = new Ship(grid);
-                    _ships.Add(ship.EntityId, ship);
-                }
-            }
-            grid.OnIsStaticChanged += OnIsStaticChanged;
-        }
-
-        private void OnIsStaticChanged(IMyCubeGrid grid, bool isStatic)
-        {
-            var baseEntity = Utilities.GetBaseGrid(grid);
-            if (isStatic)
-            {
-                if (_ships.ContainsKey(baseEntity.EntityId))
-                {
-                    _ships[baseEntity.EntityId].Grid.OnMarkForClose -= OnMarkForClose;
-                    _ships.Remove(baseEntity.EntityId);
-                }
-            }
-            else
-            {
-                if (baseEntity.Physics != null
-                &&  !_ships.ContainsKey(baseEntity.EntityId))
+                if (!_ships.ContainsKey(entity.EntityId))
                 {
                     grid.OnMarkForClose += OnMarkForClose;
                     Ship ship = new Ship(grid);
@@ -217,7 +193,10 @@ namespace Khjin.CombatInterdiction
 
         public Ship GetShip(long entityId)
         {
-            return _ships[entityId];
+            if (_ships.ContainsKey(entityId)) 
+            { return _ships[entityId]; }
+            else
+            { return null; }
         }
 
         public Ship[] Ships

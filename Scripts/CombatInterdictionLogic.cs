@@ -5,9 +5,7 @@ using Sandbox.ModAPI;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq;
 using VRage.Game;
-using VRage.Game.Components;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
 using VRage.ModAPI;
@@ -38,7 +36,8 @@ namespace Khjin.CombatInterdiction
         private const float BASE_TURN_RATE = 20.0f;                 // Reference turn rate (strike fighter)
         private const float BASE_TURN_RATE_WEIGHT = 25000.0f;       // Reference weight (strike fighter)
         private const float BASE_TURN_RATE_SPEED = 680.0f;          // Reference speed (strike fighter)
-        private const float RAMP_DOWN_FACTOR = 0.1f;                // Smoothen slow down
+        private const float SPEED_RAMPDOWN_FACTOR = 0.01f;          // Smoothen slow down
+        private const float TURN_RATE_RAMPDOWN_FACTOR = 0.05f;      // Smoothen turn rate clamping
 
         private class CombatMessage
         {
@@ -145,10 +144,14 @@ namespace Khjin.CombatInterdiction
 
         public void UpdateShips()
         {
-            Ship[] ships = session.Ships;
-            foreach (var ship in ships)
+            foreach (var ship in session.Ships)
             {
-                if (ship.Grid == null || ship.Grid.Physics == null || ship.MarkedForClose) { continue; }
+                if (ship.Grid == null 
+                ||  ship.Grid.Physics == null   // Projections
+                ||  ship.Grid.IsStatic          // Static Grids (Buildings etc.)
+                ||  ship.MarkedForClose) 
+                { continue; }
+
                 UpdateCombatStatus(ship);
                 ApplySpeedLimits(ship);
             }
@@ -183,12 +186,13 @@ namespace Khjin.CombatInterdiction
 
         private void ApplySpeedLimits(Ship ship)
         {
-            RefreshBlocks(ship);
-
             if (ship.ThrusterCount == 0
-            || (Utilities.IsNpcOwned(ship.Grid) && !ship.InCombat)
-            || (GetControllingPlayerIdentiyId(ship) == -1 && ship.Volume <= settings.minimumGridVolume))
-            { return; }
+            || ship.Volume <= settings.minimumGridVolume
+            || IsDockedSmallGrid(ship)
+            || (Utilities.IsNpcOwned(ship.Grid) && !ship.InCombat))
+            {
+                return;
+            }
 
             RefreshWaterStatus(ship);
             RefreshAtmosphereStatus(ship);
@@ -224,6 +228,10 @@ namespace Khjin.CombatInterdiction
                     shipMaxSpeed *= settings.largeGridBoostSpeedMultiplier;
                     ApplyThrustBoost(ship);
                 }
+                else
+                {
+                    RemoveThrustBoost(ship);
+                }
 
                 shipMaxSpeed = MathHelper.Clamp(shipMaxSpeed, 0, settings.largeGridMaxSpeed);
             }
@@ -235,16 +243,17 @@ namespace Khjin.CombatInterdiction
             {
                 // Calculate grid speed buffer and unified direction
                 Vector3 direction = ship.LinearVelocity.Normalized();
-                if (Math.Abs(shipSpeed - shipMaxSpeed) > 5)
+                if (Math.Abs(shipSpeed - shipMaxSpeed) >= 10)
                 {
-                    ship.CurrentLinearSpeed = MathHelper.Lerp(shipSpeed, shipMaxSpeed, RAMP_DOWN_FACTOR);
-                    Vector3 clampedSpeed = direction * ship.CurrentLinearSpeed;
-                    ship.Grid.Physics.SetSpeeds(clampedSpeed, ship.Grid.Physics.AngularVelocity);
+                    ship.LerpLinearSpeed = MathHelper.Lerp(shipSpeed, shipMaxSpeed, SPEED_RAMPDOWN_FACTOR);
+                    Vector3 clampedSpeed = direction * ship.LerpLinearSpeed;
+                    ship.Physics.SetSpeeds(clampedSpeed, ship.Physics.AngularVelocity);
                 }
                 else
                 {
+                    ship.LerpLinearSpeed = 0;
                     Vector3 clampedSpeed = direction * shipMaxSpeed;
-                    ship.Grid.Physics.SetSpeeds(clampedSpeed, ship.Grid.Physics.AngularVelocity);
+                    ship.Physics.SetSpeeds(clampedSpeed, ship.Physics.AngularVelocity);
                 }
             }
 
@@ -256,14 +265,14 @@ namespace Khjin.CombatInterdiction
                 if (shipAngularSpeed > shipMaxAngularSpeed)
                 {
                     Vector3 direction = ship.AngularVelocity.Normalized();
-                    ship.CurrentAngularSpeed = MathHelper.Lerp(shipAngularSpeed, shipMaxAngularSpeed, RAMP_DOWN_FACTOR);
-                    Vector3 clampedSpeed = direction * ship.CurrentAngularSpeed;
-                    ship.Grid.Physics.SetSpeeds(ship.LinearVelocity, clampedSpeed);
+                    ship.LerpAngularSpeed = MathHelper.Lerp(shipAngularSpeed, shipMaxAngularSpeed, TURN_RATE_RAMPDOWN_FACTOR);
+                    Vector3 clampedSpeed = direction * ship.LerpAngularSpeed;
+                    ship.Physics.SetSpeeds(ship.LinearVelocity, clampedSpeed);
                 }
             }
         }
 
-        public float GetLargeGridBaseSpeed(Ship ship)
+        private float GetLargeGridBaseSpeed(Ship ship)
         {
             float weightKg = ship.Grid.Physics.Mass;
             float maxThrust = settings.largeGridSpeedFactor * (float)Math.Pow(weightKg, settings.largeGridWeightFactor + 1) * GRAVITY;
@@ -273,7 +282,7 @@ namespace Khjin.CombatInterdiction
             return (float)Math.Sqrt((2 * maxThrust) / fluidDrag);
         }
 
-        public float GetLargeGridJetBaseSpeed(Ship ship)
+        private float GetLargeGridJetBaseSpeed(Ship ship)
         {
             float weightKg = ship.Grid.Physics.Mass;
             float maxThrust = settings.largeGridJetSpeedFactor * (float)Math.Pow(weightKg, settings.largeGridJetWeightFactor + 1) * GRAVITY;
@@ -283,7 +292,7 @@ namespace Khjin.CombatInterdiction
             return (float)Math.Sqrt((2 * maxThrust) / fluidDrag);
         }
 
-        public float GetSmallGridBaseSpeed(Ship ship)
+        private float GetSmallGridBaseSpeed(Ship ship)
         {
             float weightKg = ship.Grid.Physics.Mass;
             float thrust = settings.smallGridSpeedFactor * (float)Math.Pow(weightKg, settings.smallGridWeightFactor + 1) * GRAVITY;
@@ -293,7 +302,7 @@ namespace Khjin.CombatInterdiction
             return (float)Math.Sqrt((2 * thrust) / fluidDrag);
         }
 
-        public float GetSmallGridJetBaseSpeed(Ship ship)
+        private float GetSmallGridJetBaseSpeed(Ship ship)
         {
             float weightKg = ship.Mass;
             float thrust = settings.smallGridJetSpeedFactor * (float)Math.Pow(weightKg, settings.smallGridJetWeightFactor + 1) * GRAVITY;
@@ -303,7 +312,7 @@ namespace Khjin.CombatInterdiction
             return (float)Math.Sqrt((2 * thrust) / fluidDrag);
         }
 
-        public float GetSmallGridTurnRate(float mass, float speed, Vector3 angularVelocity)
+        private float GetSmallGridTurnRate(float mass, float speed, Vector3 angularVelocity)
         {
             float pitch = angularVelocity.Y;
             float yaw = angularVelocity.Z;
@@ -345,34 +354,47 @@ namespace Khjin.CombatInterdiction
             return player == null ? -1 : player.IdentityId;
         }
 
-        public bool HasGasBasedThrusters(Ship ship)
+        private bool HasGasBasedThrusters(Ship ship)
         {
-            bool result = false;
-            ship.HoldThrusters(thrusters =>
+            foreach (var thruster in ship.Thrusters)
             {
-                foreach (var thruster in thrusters)
+                if (thruster == null || !thruster.IsFunctional) { continue; }
+                MyThrustDefinition thrustDef = (thruster as MyThrust)?.BlockDefinition;
+                if (thrustDef != null)
                 {
-                    if (thruster == null || !thruster.IsFunctional) { continue; }
-                    MyThrustDefinition thrustDef = (thruster as MyThrust)?.BlockDefinition;
-                    if (thrustDef != null)
+                    if ($"{thrustDef.FuelConverter.FuelId.TypeId}" == "MyObjectBuilder_GasProperties")
                     {
-                        if ($"{thrustDef.FuelConverter.FuelId.TypeId}" == "MyObjectBuilder_GasProperties")
-                        {
-                            result = true;
-                        }
+                        return true;
                     }
                 }
-            });
-            return result;
+            }
+            return false;
         }
 
+        private bool IsDockedSmallGrid(Ship ship)
+        {
+            if (ship.Grid.GridSizeEnum == MyCubeSize.Small)
+            {
+                // Check if connected to a large grid
+                List<IMyCubeGrid> grids = new List<IMyCubeGrid>();
+                IMyGridGroupData group = ship.Grid.GetGridGroup(GridLinkTypeEnum.Physical);
+                group.GetGrids(grids);
+                foreach (IMyCubeGrid grid in grids)
+                {
+                    if (grid.GridSizeEnum == MyCubeSize.Large) 
+                    { return true; }
+                }
+            }
+            return false;
+        }
+        
         private bool IsOnSuperCruise(Ship ship)
         {
             List<IMyCockpit> cockpits = new List<IMyCockpit>(ship.Grid.GetFatBlocks<IMyCockpit>());
             foreach (var cockpit in cockpits)
             {
                 var logic = cockpit.GameLogic?.GetAs<CombatInterdictionBlock>();
-                if (logic != null && cockpit.IsFunctional && cockpit.CanControlShip && cockpit.IsUnderControl)
+                if (logic != null && cockpit.IsFunctional && cockpit.CanControlShip)
                 {
                     if (logic.SuperCruise) { return true; }
                     else { continue; }
@@ -381,36 +403,68 @@ namespace Khjin.CombatInterdiction
             return false;
         }
 
+        public void SyncBoostRequest(long grid, long block, bool value)
+        {
+            Ship ship = session.GetShip(grid);
+            if (ship != null)
+            {
+                List<IMyCockpit> cockpits = new List<IMyCockpit>(ship.Grid.GetFatBlocks<IMyCockpit>());
+                foreach (var cockpit in cockpits)
+                {
+                    var logic = cockpit.GameLogic?.GetAs<CombatInterdictionBlock>();
+                    if (logic != null && cockpit.IsFunctional && cockpit.CanControlShip)
+                    {
+                        if (cockpit.EntityId == block)
+                        {
+                            logic.SuperCruise = value;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
         private void ApplyThrustBoost(Ship ship)
         {
             // Get the total thrust count
             float totalThrust = 0;
             int activeThrusterCount = 0;
-            ship.HoldThrusters(thrusters =>
+            IMyThrust[] thrusters = ship.Thrusters;
+
+            foreach (var thruster in thrusters)
             {
-                foreach (var thruster in thrusters) {
-                    float currentThrust = thruster.CurrentThrust;
-                    if (Math.Abs(currentThrust) < 0.0001f) { continue; }
-                    totalThrust += currentThrust;
-                    activeThrusterCount++;
-                }
+                float currentThrust = thruster.CurrentThrust;
+                if (Math.Abs(currentThrust) < 0.0001f) { continue; }
+                totalThrust += currentThrust;
+                activeThrusterCount++;
+            }
 
-                // Apply thruster based boost
-                float maxThrust = ship.Grid.Physics.Mass * GRAVITY * settings.largeGridBoostTwr;
-                foreach (var thruster in thrusters)
-                {
-                    float currentThrust = thruster.CurrentThrust;
-                    if (Math.Abs(currentThrust) < 0.0001f) { continue; }
+            // Apply thruster based boost
+            float maxThrust = ship.Grid.Physics.Mass * GRAVITY * settings.largeGridBoostTwr;
+            foreach (var thruster in thrusters)
+            {
+                float currentThrust = thruster.CurrentThrust;
+                if (Math.Abs(currentThrust) < 0.0001f) { continue; }
 
-                    float ratio = currentThrust / totalThrust;
-                    float boostForce = (maxThrust * ratio) - currentThrust;
+                float ratio = currentThrust / totalThrust;
+                float boostForce = (maxThrust * ratio) - currentThrust;
+                float boostMultiplier = (boostForce / currentThrust) / 100.0f;
+                thruster.ThrustMultiplier = boostMultiplier;
+            }
 
-                    Vector3D force = thruster.WorldMatrix.Backward * boostForce;
-                    var groupProperties = MyGridPhysicalGroupData.GetGroupSharedProperties((MyCubeGrid)ship.Grid);
-                    ship.Grid.Physics.AddForce(MyPhysicsForceType.APPLY_WORLD_FORCE,
-                        force, groupProperties.CoMWorld, null);
-                }
-            });
+            ship.IsOnBoost = true;
+        }
+
+        private void RemoveThrustBoost(Ship ship)
+        {
+            if (!ship.IsOnBoost) { return; }
+
+            foreach (IMyThrust thruster in ship.Thrusters)
+            {
+                thruster.ThrustMultiplier = 1.0f;
+            }
+
+            ship.IsOnBoost = false;
         }
 
         private bool IsNonCombatDamage(MyStringHash type)
@@ -428,27 +482,6 @@ namespace Khjin.CombatInterdiction
             return true;
         }
         
-        private void RefreshBlocks(Ship ship)
-        {
-            ship.HoldThrusters(thrusters => thrusters.Clear());
-
-            var group = MyAPIGateway.GridGroups.GetGridGroup(GridLinkTypeEnum.Mechanical, ship.Grid);
-            ship.HoldGrids(grids =>
-            {
-                grids.Clear();
-                group.GetGrids(grids);
-
-                foreach (var grid in grids)
-                {
-                    var foundThrusters = grid.GetFatBlocks<IMyThrust>();
-                    if (foundThrusters.Count() > 0)
-                    {
-                        ship.HoldThrusters(thrusters => thrusters.AddRange(foundThrusters));
-                    }
-                }
-            });
-        }
-
         private void RefreshAtmosphereStatus(Ship ship)
         {
             ship.NaturalGravity = ship.Grid.NaturalGravity.Length();
@@ -472,7 +505,7 @@ namespace Khjin.CombatInterdiction
                     if (WaterModAPI.IsUnderwater(point))
                     {
                         submergedPoints++;
-                        ship.InWater = submergedPoints >= 4;
+                        ship.InWater = submergedPoints >= 2;
                         ship.IsSubmerged = submergedPoints >= 8;
                     }
                 }
@@ -483,10 +516,7 @@ namespace Khjin.CombatInterdiction
     
         private IMyShipController GetController(Ship ship)
         {
-            List<IMyShipController> controllers = new List<IMyShipController>();
-            var gts = MyAPIGateway.TerminalActionsHelper.GetTerminalSystemForGrid(ship.Grid);
-            gts.GetBlocksOfType(controllers);
-            foreach(var controller in controllers)
+            foreach (var controller in ship.Controllers)
             {
                 if (controller.CanControlShip && controller.IsUnderControl)
                 {

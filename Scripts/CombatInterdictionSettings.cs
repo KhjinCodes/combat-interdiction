@@ -8,7 +8,7 @@ namespace Khjin.CombatInterdiction
 {
     public class CombatInterdictionSettings
     {
-        private const string configversion = "1.0.3";
+        private const string configversion = "1.0.4";
         private const string SECTION_NAME = "Combat Interdiction Settings";
         private const string SETTINGS_FILENAME = "combat_interdiction_settings.cfg";
         private MyIni iniUtil = null;
@@ -103,9 +103,9 @@ namespace Khjin.CombatInterdiction
             });
             settingLimits.Add(nameof(largeGridBoostTwr), new FloatLimits()
             {
-                DefaultValue = 5.0f,
-                MinValue = 0.01f,
-                MaxValue = 15.0f
+                DefaultValue = 15.0f,
+                MinValue = 0.001f,
+                MaxValue = 100.0f
             });
             settingLimits.Add(nameof(interdictionDuration), new IntLimits()
             {

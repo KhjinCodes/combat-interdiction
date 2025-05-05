@@ -6,12 +6,14 @@ using VRage.Game.Components;
 using VRage.ModAPI;
 using VRage.ObjectBuilders;
 
+
 namespace Khjin.CombatInterdiction
 {
     [MyEntityComponentDescriptor(typeof(MyObjectBuilder_Cockpit), false)]
     public class CombatInterdictionBlock : MyGameLogicComponent
     {
         IMyCockpit cockpit;
+        private CombatInterdictionMessaging messaging = null;
         public static Guid SuperCruiseKey = new Guid("2d14d3e8a962424db0114056c53bbb01");
 
         public override void Init(MyObjectBuilder_EntityBase objectBuilder)
@@ -23,6 +25,8 @@ namespace Khjin.CombatInterdiction
         {
             CombatInterdictionBlockUI.DoOnce(ModContext);
             cockpit = (IMyCockpit)Entity;
+            if (messaging == null)
+            { messaging = CombatInterdictionSession.Instance.Messaging; }
             if (cockpit.CubeGrid?.Physics == null)
                 return;
         }
@@ -48,6 +52,16 @@ namespace Khjin.CombatInterdiction
                 { cockpit.Storage[SuperCruiseKey] = value.ToString(); }
                 else
                 { cockpit.Storage.Add(SuperCruiseKey, value.ToString()); }
+
+                if (!Utilities.IsServer())
+                {
+                    // Sync Super Cruise
+                    string syncMessage = $"{CombatInterdictionMessaging.SYNC_BOOST_KEY}|" +
+                                         $"{cockpit.CubeGrid.EntityId}|" +
+                                         $"{cockpit.EntityId}|" +
+                                         $"{value}";
+                    messaging.MessageServer(syncMessage);
+                }
             }
         }
     }

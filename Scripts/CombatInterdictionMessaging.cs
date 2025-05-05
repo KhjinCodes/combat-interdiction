@@ -13,6 +13,7 @@ namespace Khjin.CombatInterdiction
         private const ushort channelId = 30541; // Unique ID for this mod
         private Networking networking = null;
         private bool isWelcomeDone = false;
+        public const string SYNC_BOOST_KEY = "#SB#";
 
         public CombatInterdictionMessaging() { }
 
@@ -72,7 +73,19 @@ namespace Khjin.CombatInterdiction
     
         private void ProcessAsServer(ulong senderId, MessagePacket packet)
         {
-            if (packet.Message.StartsWith("/r"))
+            if (packet.Message.StartsWith(SYNC_BOOST_KEY))
+            {
+                if (CombatInterdictionSession.Instance.Logic != null)
+                {
+                    string[] values = packet.Message.Split(new char[] { '|' },
+                        StringSplitOptions.RemoveEmptyEntries);
+                    long entityId = long.Parse(values[1]);
+                    long blockId = long.Parse(values[2]);
+                    bool value = bool.Parse(values[3]);
+                    CombatInterdictionSession.Instance.Logic.SyncBoostRequest(entityId, blockId, value);
+                }
+            }
+            else if (packet.Message.StartsWith("/r"))
             {
                 // Set fromLocal as false as this always comes from clients
                 CombatInterdictionSession.Instance.Commands.HandleCommand(packet.Message, senderId, false);
