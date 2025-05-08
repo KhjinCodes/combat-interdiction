@@ -38,6 +38,7 @@ namespace Khjin.CombatInterdiction
         private const float BASE_TURN_RATE_SPEED = 680.0f;          // Reference speed (strike fighter)
         private const float SPEED_RAMPDOWN_FACTOR = 0.01f;          // Smoothen slow down
         private const float TURN_RATE_RAMPDOWN_FACTOR = 0.05f;      // Smoothen turn rate clamping
+        private const float MIN_PARENT_GRID_VOLUME = 400.0f;
 
         private class CombatMessage
         {
@@ -152,6 +153,8 @@ namespace Khjin.CombatInterdiction
                 ||  ship.MarkedForClose) 
                 { continue; }
 
+                ship.InitializeHooksOnce();
+                ship.InitializeBlocksOnce();
                 UpdateCombatStatus(ship);
                 ApplySpeedLimits(ship);
             }
@@ -186,6 +189,17 @@ namespace Khjin.CombatInterdiction
 
         private void ApplySpeedLimits(Ship ship)
         {
+            var controller = GetController(ship);
+            if (controller != null)
+            {
+                controller.CustomData =
+                    $"Thrusters: {ship.ThrusterCount}\n" +
+                    $"Controllers: {ship.ControllerCount}\n" +
+                    $"Volume: {ship.Volume}\n" +
+                    $"Docked: {IsDockedSmallGrid(ship)}\n" +
+                    $"NPC Owned: {Utilities.IsNpcOwned(ship.Grid)}\n";
+            }
+
             if (ship.ThrusterCount == 0
             || ship.Volume <= settings.minimumGridVolume
             || IsDockedSmallGrid(ship)
@@ -381,7 +395,8 @@ namespace Khjin.CombatInterdiction
                 group.GetGrids(grids);
                 foreach (IMyCubeGrid grid in grids)
                 {
-                    if (grid.GridSizeEnum == MyCubeSize.Large) 
+                    if (grid.GridSizeEnum == MyCubeSize.Large
+                    &&  grid.WorldAABB.Size.Volume > MIN_PARENT_GRID_VOLUME)
                     { return true; }
                 }
             }

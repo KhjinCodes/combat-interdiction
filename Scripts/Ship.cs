@@ -1,11 +1,10 @@
-﻿using Sandbox.ModAPI;
+﻿using Sandbox.Game.Entities;
+using Sandbox.ModAPI;
 using System;
 using System.Collections.Generic;
-using VRage.Collections;
 using VRage.Game.Components;
 using VRage.Game.Entity;
 using VRage.Game.ModAPI;
-using VRage.ModAPI;
 using VRageMath;
 
 namespace Khjin.CombatInterdiction
@@ -17,6 +16,10 @@ namespace Khjin.CombatInterdiction
         private readonly List<IMyCubeGrid> grids;
         private readonly List<IMyThrust> thrusters;
         private readonly List<IMyShipController> controllers;
+        private IEnumerable<IMyCubeBlock> fatBlocks;
+        private bool isBlocksInitialized;
+        private bool isHooksInitialized;
+        private int waitHookInitialize;
 
         public int InterdictionDuration;
         public float NaturalGravity;
@@ -35,33 +38,98 @@ namespace Khjin.CombatInterdiction
             thrusters = new List<IMyThrust>();
             controllers = new List<IMyShipController>();
             BoostForces = new List<Vector3>();
-            Initialize();
+            isBlocksInitialized = false;
+            isHooksInitialized = false;
+            waitHookInitialize = 60 * 5;
         }
 
-        public void Initialize()
+        public void InitializeBlocksOnce()
         {
-            // Add block update events so we don't have to track blocks
-            // block changes manually
+            if (isBlocksInitialized) { return; }
+            isBlocksInitialized = true;
+
             gridGroupData = grid.GetGridGroup(GridLinkTypeEnum.Mechanical);
             gridGroupData.GetGrids(grids);
+
             lock (grids)
             {
                 foreach(IMyCubeGrid grid in grids)
                 {
-                    grid.OnMarkForClose += OnMarkForClose;
-                    grid.OnBlockAdded += OnBlockAdded;
-                    grid.OnBlockRemoved += OnBlockRemoved;
-
-                    lock (thrusters)
+                    fatBlocks = grid.GetFatBlocks<IMyCubeBlock>();
+                    lock (fatBlocks)
                     {
-                        thrusters.AddRange(grid.GetFatBlocks<IMyThrust>());
-                    }
-                    
-                    lock (controllers)
-                    {
-                        controllers.AddRange(grid.GetFatBlocks<IMyShipController>());
+                        foreach (IMyCubeBlock block  in fatBlocks)
+                        {
+                            IMyShipController controller = block as IMyShipController;
+                            if (controller != null && !controllers.Contains(controller))
+                            {
+                                lock (controllers) { controllers.Add(controller); }
+                                continue;
+                            }
+                            IMyThrust thruster = block as IMyThrust;
+                            if (thruster != null && !thrusters.Contains(thruster))
+                            {
+                                lock (thrusters) { thrusters.Add(thruster); }
+                                continue;
+                            }
+                        }
                     }
                 }
+            }
+        }
+
+        public void InitializeHooksOnce()
+        {
+            if (isHooksInitialized) { return; }
+            if (waitHookInitialize > 0) { waitHookInitialize--; return; }
+            isHooksInitialized = true;
+
+            gridGroupData = grid.GetGridGroup(GridLinkTypeEnum.Mechanical);
+            gridGroupData.GetGrids(grids);
+
+            lock (grids)
+            {
+                foreach (IMyCubeGrid grid in grids)
+                {
+                    ((MyCubeGrid)grid).OnFatBlockAdded += Grid_OnFatBlockAdded;
+                    ((MyCubeGrid)grid).OnFatBlockRemoved += Grid_OnFatBlockRemoved;
+                    ((MyCubeGrid)grid).OnMarkForClose += Grid_OnMarkForClose;
+                }
+            }
+        }
+
+        private void Grid_OnMarkForClose(MyEntity obj)
+        {
+            ((MyCubeGrid)obj).OnFatBlockAdded -= Grid_OnFatBlockAdded;
+            ((MyCubeGrid)obj).OnFatBlockRemoved -= Grid_OnFatBlockRemoved;
+            ((MyCubeGrid)obj).OnMarkForClose -= Grid_OnMarkForClose;
+        }
+
+        private void Grid_OnFatBlockAdded(MyCubeBlock obj)
+        {
+            IMyThrust thruster = obj as IMyThrust;
+            if (thruster != null && !thrusters.Contains(thruster))
+            {
+                thrusters.Add(thruster); return;
+            }
+            IMyShipController controller = obj as IMyShipController;
+            if (controller != null && !controllers.Contains(controller))
+            {
+                controllers.Add(controller); return;
+            }
+        }
+
+        private void Grid_OnFatBlockRemoved(MyCubeBlock obj)
+        {
+            IMyThrust thruster = obj as IMyThrust;
+            if (thruster != null && thrusters.Contains(thruster))
+            {
+                thrusters.Remove(thruster); return;
+            }
+            IMyShipController controller = obj as IMyShipController;
+            if (controller != null && controllers.Contains(controller))
+            {
+                controllers.Remove(controller); return;
             }
         }
 
@@ -133,87 +201,6 @@ namespace Khjin.CombatInterdiction
         public bool MarkedForClose
         {
             get { return Grid.MarkedForClose; }
-        }
-
-        private void OnMarkForClose(IMyEntity grid)
-        {
-            this.grid.OnBlockAdded -= OnBlockAdded;
-            this.grid.OnBlockRemoved -= OnBlockRemoved;
-            this.grid.OnMarkForClose -= OnMarkForClose;
-        }
-
-        private void OnBlockAdded(IMySlimBlock block)
-        {
-            lock (gridGroupData)
-            {
-                gridGroupData = grid.GetGridGroup(GridLinkTypeEnum.Mechanical);
-                IMyGridGroupData blockGridGroupData = block.CubeGrid.GetGridGroup(GridLinkTypeEnum.Mechanical);
-                if (blockGridGroupData != gridGroupData) { return; }
-            }
-
-            if (block is IMyThrust)
-            {
-                lock (thrusters)
-                {
-                    IMyThrust thruster = block as IMyThrust;
-                    if (!thrusters.Contains(thruster))
-                    {
-                        thrusters.Add(thruster);
-                    }
-                }
-            }
-            else if (block is IMyShipController)
-            {
-                lock (controllers)
-                {
-                    IMyShipController controller = block as IMyShipController;
-                    if (!controllers.Contains(controller))
-                    {
-                        controllers.Add(controller);
-                    }
-                }
-            }
-            else
-            {
-                // DO NOTHING
-            }
-        }
-
-        private void OnBlockRemoved(IMySlimBlock block)
-        {
-            lock (gridGroupData)
-            {
-                gridGroupData = grid.GetGridGroup(GridLinkTypeEnum.Mechanical);
-                IMyGridGroupData blockGridGroupData = block.CubeGrid.GetGridGroup(GridLinkTypeEnum.Mechanical);
-                if (blockGridGroupData != gridGroupData) { return; }
-            }
-
-            if (block is IMyThrust)
-            {
-                lock (thrusters)
-                {
-                    IMyThrust thruster = block as IMyThrust;
-                    if (thrusters.Contains(thruster))
-                    {
-                        thrusters.Remove(thruster);
-                    }
-                }
-            }
-            else if (block is IMyShipController)
-            {
-                lock (controllers)
-                {
-                    IMyShipController controller = block as IMyShipController;
-                    if (controllers.Contains(controller))
-                    {
-                        controllers.Remove(controller);
-                    }
-                }
-            }
-            else
-            {
-                // DO NOTHING
-            }
         }
 
         public IMyThrust[] Thrusters

@@ -153,6 +153,9 @@ namespace Khjin.CombatInterdiction
 
             try
             {
+                // Synced processing of messages
+                Messaging.ProcessMessages();
+
                 if (Utilities.IsServer())
                 {
                     MyAPIGateway.Parallel.Start(Logic.UpdateShips, new ParallelTasks.WorkOptions()

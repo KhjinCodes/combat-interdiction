@@ -2,6 +2,7 @@
 using Sandbox.ModAPI;
 using System;
 using System.Collections.Generic;
+using VRage.Collections;
 using VRage.Game;
 using VRage.Game.ModAPI;
 using VRage.Utils;
@@ -14,12 +15,23 @@ namespace Khjin.CombatInterdiction
         private Networking networking = null;
         private bool isWelcomeDone = false;
         public const string SYNC_BOOST_KEY = "#SB#";
+        private readonly MyConcurrentQueue<Message> receivedQueue;
 
-        public CombatInterdictionMessaging() { }
+        private struct Message
+        {
+            public ulong SenderId;
+            public bool IsFromServer;
+            public MessagePacket Data;
+        }
+
+        public CombatInterdictionMessaging() 
+        {
+            receivedQueue = new MyConcurrentQueue<Message>();
+        }
 
         public void LoadData()
         {
-            networking = new Networking(channelId, new Action<ulong, MessagePacket, bool>(ProcessMessage));
+            networking = new Networking(channelId, new Action<ulong, MessagePacket, bool>(OnMessageReceived));
             networking.Register();
         }
 
@@ -56,19 +68,36 @@ namespace Khjin.CombatInterdiction
             Utilities.NotifyMessage(message, fontColor);
         }
 
-        private void ProcessMessage(ulong senderId, MessagePacket packet, bool isArrivedFromServer)
+        public void ProcessMessages()
         {
-            if (isArrivedFromServer)
+            for (int i = 0; (i <= 10 && receivedQueue.Count > 0); i++)
             {
-                ProcessAsClient(senderId, packet);
-            }
-            else
-            {
-                if (Utilities.IsServer())
+                Message msg;
+                if (receivedQueue.TryDequeue(out msg))
                 {
-                    ProcessAsServer(senderId, packet);
+                    if (msg.IsFromServer)
+                    {
+                        ProcessAsClient(msg.SenderId, msg.Data);
+                    }
+                    else
+                    {
+                        if (Utilities.IsServer())
+                        {
+                            ProcessAsServer(msg.SenderId, msg.Data);
+                        }
+                    }
                 }
             }
+        }
+
+        private void OnMessageReceived(ulong senderId, MessagePacket packet, bool isArrivedFromServer)
+        {
+            receivedQueue.Enqueue(new Message()
+            {
+                SenderId = senderId,
+                IsFromServer = isArrivedFromServer,
+                Data = packet
+            });
         }
     
         private void ProcessAsServer(ulong senderId, MessagePacket packet)
