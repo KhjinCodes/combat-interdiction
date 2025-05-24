@@ -15,7 +15,7 @@ namespace Khjin.CombatInterdiction
     {
         public static CombatInterdictionSession Instance { get; private set; }
 
-        public const string MOD_VERSION = "1.4";
+        public const string MOD_VERSION = "1.5";
         public const string MOD_NAME = "Combat Interdiction";
 
         // Handles messages through chat input and from other sessions (players, server)

@@ -22,36 +22,54 @@ namespace Khjin.CombatInterdiction
         private List<long> activeContacts = new List<long>();
         private ConcurrentQueue<CombatMessage> combatMessages = new ConcurrentQueue<CombatMessage>();
 
+        // Environment constants
         private const float GRAVITY = 9.81f;                        // Earth gravtiy in m/s²
         private const float AIR_DENSITY = 1.225f;                   // Earth air density at sea level in kg/m³
         private const float WATER_DENSITY = 1026.0f;                // Earth sea water density at sea level in kg/m³
-        private const float LARGE_GRID_DRAG_COEFFICIENT = 0.105f;   // Drag coefficient of a large grid cube
-        private const float SMALL_GRID_DRAG_COEFFICIENT = 0.047f;   // Drag coefficient of a small grid sphere
-        private const float FRONT_AREA_FACTOR = 0.05f;              // Fake front area drag from mass
+        private const float MIN_PARENT_GRID_VOLUME = 400.0f;        // Minimum grid volume of LG to be considered as parent
 
-        private const float MINIMUM_TURN_RATE = (float)(5.0f * (Math.PI / 180));
-        private const float MAXIMUM_TURN_RATE = (float)(25.0f * (Math.PI / 180));
-        private const float MAXIMUM_ROLL_RATE = (float)(300.0f * (Math.PI / 180));
+        // Drag global factors
+        private const float LARGE_GRID_DRAG_COEFFICIENT = 0.105f;
+        private const float SMALL_GRID_DRAG_COEFFICIENT = 0.047f;
+        private const float FRONT_AREA_FACTOR = 0.05f;
 
-        private const float BASE_TURN_RATE = 20.0f;                 // Reference turn rate (strike fighter)
-        private const float BASE_TURN_RATE_WEIGHT = 25000.0f;       // Reference weight (strike fighter)
-        private const float BASE_TURN_RATE_SPEED = 680.0f;          // Reference speed (strike fighter)
-        private const float SPEED_RAMPDOWN_FACTOR = 0.01f;          // Smoothen slow down
-        private const float TURN_RATE_RAMPDOWN_FACTOR = 0.05f;      // Smoothen turn rate clamping
-        private const float MIN_PARENT_GRID_VOLUME = 400.0f;
+        // Dive speed global factors
+        private const float DIVE_MAX_DRAG_REDUCTION = 0.80f;
+        private const float DIVE_MIN_ANGLE = 45.0f;
 
-        private class CombatMessage
+        // Smoothen speed and turns
+        private const float ENGINEER_SAFE_MAXIMUM_ROLL_RATE = (float)(300.0f * (Math.PI / 180));
+        private const float ENGINEER_SAFE_MAXIMUM_TURN_RATE = (float)(40.0f * (Math.PI / 180));
+        private const float TURN_RATE_RAMPDOWN_FACTOR = 0.05f;
+        private const float SPEED_RAMPDOWN_FACTOR = 0.01f;
+
+        private struct SpeedFactors
         {
-            public long Recipient { get; private set; }
-            public string Message { get; private set; }
-            public string Color { get; private set; }
+            public float DragCoefficient;
+            public float BaseWeight;
+            public float BaseTwr;
+            public float MinimumTwr;
+            public float MaximumTwr;
+            public float SpeedFactor;
+            public float WeightFactor;
+        }
 
-            public CombatMessage(long recipient, string message, string color)
-            {
-                Recipient = recipient;
-                Message = message;
-                Color = color;
-            }
+        private struct TurnFactors 
+        {
+            public float BaseWeight;
+            public float BaseTurnRate;
+            public float BaseTurnRateSpeed;
+            public float MinimumTurnRate;
+            public float MaximumTurnRate;
+            public float TurnRateSpeedFactor;
+            public float TurnRateWeightFactor;
+        }
+
+        private struct CombatMessage
+        {
+            public long Recipient;
+            public string Message;
+            public string Color;
         }
 
         public CombatInterdictionLogic() { }
@@ -131,7 +149,12 @@ namespace Khjin.CombatInterdiction
 
         private void SendCombatMessage(long identiyId, string message, string color)
         {
-            combatMessages.Enqueue(new CombatMessage(identiyId, message, color));
+            combatMessages.Enqueue(new CombatMessage()
+            {
+                Recipient = identiyId,
+                Message = message,
+                Color = color
+            });
         }
 
         public void ProcessCombatMessages()
@@ -155,6 +178,7 @@ namespace Khjin.CombatInterdiction
 
                 ship.InitializeHooksOnce();
                 ship.InitializeBlocksOnce();
+                ship.UpdateMass();
                 UpdateCombatStatus(ship);
                 ApplySpeedLimits(ship);
             }
@@ -189,17 +213,6 @@ namespace Khjin.CombatInterdiction
 
         private void ApplySpeedLimits(Ship ship)
         {
-            var controller = GetController(ship);
-            if (controller != null)
-            {
-                controller.CustomData =
-                    $"Thrusters: {ship.ThrusterCount}\n" +
-                    $"Controllers: {ship.ControllerCount}\n" +
-                    $"Volume: {ship.Volume}\n" +
-                    $"Docked: {IsDockedSmallGrid(ship)}\n" +
-                    $"NPC Owned: {Utilities.IsNpcOwned(ship.Grid)}\n";
-            }
-
             if (ship.ThrusterCount == 0
             || ship.Volume <= settings.minimumGridVolume
             || IsDockedSmallGrid(ship)
@@ -213,14 +226,18 @@ namespace Khjin.CombatInterdiction
 
             float shipSpeed = ship.LinearVelocity.Length();
             float shipMaxSpeed = 100; // SE Default Max Speed
-            float shipMaxAngularSpeed = MAXIMUM_TURN_RATE;
+            float shipMaxAngularSpeed = ENGINEER_SAFE_MAXIMUM_TURN_RATE;
 
             if (ship.Grid.GridSizeEnum == MyCubeSize.Small)
             {
                 if (HasGasBasedThrusters(ship))
-                { shipMaxSpeed = GetSmallGridJetBaseSpeed(ship); }
+                {
+                    GetSmallGridJetBaseSpeed(ship, shipSpeed, out shipMaxSpeed, out shipMaxAngularSpeed);
+                }
                 else
-                { shipMaxSpeed = GetSmallGridBaseSpeed(ship); }
+                {
+                    GetSmallGridBaseSpeed(ship, shipSpeed, out shipMaxSpeed, out shipMaxAngularSpeed);
+                }
 
                 if (!ship.InCombat && IsOnSuperCruise(ship))
                 {
@@ -228,14 +245,17 @@ namespace Khjin.CombatInterdiction
                 }
 
                 shipMaxSpeed = MathHelper.Clamp(shipMaxSpeed, 0, settings.smallGridMaxSpeed);
-                shipMaxAngularSpeed = GetSmallGridTurnRate(ship.Mass, shipSpeed, ship.AngularVelocity);
             }
             else if (ship.Grid.GridSizeEnum == MyCubeSize.Large)
             {
                 if (HasGasBasedThrusters(ship))
-                { shipMaxSpeed = GetLargeGridJetBaseSpeed(ship); }
+                {
+                    GetLargeGridJetBaseSpeed(ship, shipSpeed, out shipMaxSpeed, out shipMaxAngularSpeed);
+                }
                 else
-                { shipMaxSpeed = GetLargeGridBaseSpeed(ship); }
+                {
+                    GetLargeGridBaseSpeed(ship, shipSpeed, out shipMaxSpeed, out shipMaxAngularSpeed);
+                }
 
                 if (!ship.InCombat && IsOnSuperCruise(ship))
                 {
@@ -261,19 +281,19 @@ namespace Khjin.CombatInterdiction
                 {
                     ship.LerpLinearSpeed = MathHelper.Lerp(shipSpeed, shipMaxSpeed, SPEED_RAMPDOWN_FACTOR);
                     Vector3 clampedSpeed = direction * ship.LerpLinearSpeed;
-                    ship.Physics.SetSpeeds(clampedSpeed, ship.Physics.AngularVelocity);
+                    ship.Physics.SetSpeeds(clampedSpeed, ship.AngularVelocity);
                 }
                 else
                 {
                     ship.LerpLinearSpeed = 0;
                     Vector3 clampedSpeed = direction * shipMaxSpeed;
-                    ship.Physics.SetSpeeds(clampedSpeed, ship.Physics.AngularVelocity);
+                    ship.Physics.SetSpeeds(clampedSpeed, ship.AngularVelocity);
                 }
             }
 
             // Apply Turn Rate Limit to Grid
-            if (ship.InAtmosphere
-            &&  ship.Grid.GridSizeEnum == MyCubeSize.Small)
+            if (ship.Grid.GridSizeEnum == MyCubeSize.Small
+            && ship.InAtmosphere && !ship.InWater)
             {
                 float shipAngularSpeed = ship.AngularVelocity.Length();
                 if (shipAngularSpeed > shipMaxAngularSpeed)
@@ -286,62 +306,167 @@ namespace Khjin.CombatInterdiction
             }
         }
 
-        private float GetLargeGridBaseSpeed(Ship ship)
+        private void GetLargeGridBaseSpeed(Ship ship, float currentSpeed, out float maxSpeed, out float maxTurnRate)
         {
-            float weightKg = ship.Grid.Physics.Mass;
-            float maxThrust = settings.largeGridSpeedFactor * (float)Math.Pow(weightKg, settings.largeGridWeightFactor + 1) * GRAVITY;
-            float frontalArea = weightKg * FRONT_AREA_FACTOR;
-            float fluidDrag = GetFluidDensity(ship) * LARGE_GRID_DRAG_COEFFICIENT * frontalArea;
-            fluidDrag = fluidDrag <= 0 ? 1 : fluidDrag;
-            return (float)Math.Sqrt((2 * maxThrust) / fluidDrag);
+            maxSpeed = GetGridBaseSpeed(ship, new SpeedFactors()
+            {
+                DragCoefficient = SMALL_GRID_DRAG_COEFFICIENT,
+                BaseWeight = settings.largeGridBaseWeight,
+                BaseTwr = settings.largeGridBaseTwr,
+                MinimumTwr = settings.largeGridMinimumTwr,
+                MaximumTwr = settings.largeGridMaximumTwr,
+                SpeedFactor = settings.largeGridSpeedFactor,
+                WeightFactor = settings.largeGridWeightFactor
+            });
+
+            maxTurnRate = GetGridTurnRate(ship, currentSpeed, new TurnFactors()
+            {
+                BaseWeight = settings.largeGridBaseWeight,
+                BaseTurnRate = settings.largeGridBaseTurnRate,
+                BaseTurnRateSpeed = settings.largeGridBaseTurnRateSpeed,
+                MinimumTurnRate = settings.largeGridMinimumTurnRate,
+                MaximumTurnRate = settings.largeGridMaximumTurnRate,
+                TurnRateSpeedFactor = settings.largeGridTurnRateSpeedFactor,
+                TurnRateWeightFactor = settings.largeGridTurnRateWeightFactor
+            });
         }
 
-        private float GetLargeGridJetBaseSpeed(Ship ship)
+        private void GetLargeGridJetBaseSpeed(Ship ship, float currentSpeed, out float maxSpeed, out float maxTurnRate)
         {
-            float weightKg = ship.Grid.Physics.Mass;
-            float maxThrust = settings.largeGridJetSpeedFactor * (float)Math.Pow(weightKg, settings.largeGridJetWeightFactor + 1) * GRAVITY;
-            float frontalArea = weightKg * FRONT_AREA_FACTOR;
-            float fluidDrag = GetFluidDensity(ship) * LARGE_GRID_DRAG_COEFFICIENT * frontalArea;
-            fluidDrag = fluidDrag <= 0 ? 1 : fluidDrag;
-            return (float)Math.Sqrt((2 * maxThrust) / fluidDrag);
+            maxSpeed = GetGridBaseSpeed(ship, new SpeedFactors()
+            {
+                DragCoefficient = LARGE_GRID_DRAG_COEFFICIENT,
+                BaseWeight = settings.largeGridJetBaseWeight,
+                BaseTwr = settings.largeGridJetBaseTwr,
+                MinimumTwr = settings.largeGridJetMinimumTwr,
+                MaximumTwr = settings.largeGridJetMaximumTwr,
+                SpeedFactor = settings.largeGridJetSpeedFactor,
+                WeightFactor = settings.largeGridJetWeightFactor
+            });
+
+            maxTurnRate = GetGridTurnRate(ship, currentSpeed, new TurnFactors()
+            {
+                BaseWeight = settings.largeGridJetBaseWeight,
+                BaseTurnRate = settings.largeGridJetBaseTurnRate,
+                BaseTurnRateSpeed = settings.largeGridJetBaseTurnRateSpeed,
+                MinimumTurnRate = settings.largeGridJetMinimumTurnRate,
+                MaximumTurnRate = settings.largeGridJetMaximumTurnRate,
+                TurnRateSpeedFactor = settings.largeGridJetTurnRateSpeedFactor,
+                TurnRateWeightFactor = settings.largeGridJetTurnRateWeightFactor
+            });
         }
 
-        private float GetSmallGridBaseSpeed(Ship ship)
+        private void GetSmallGridBaseSpeed(Ship ship, float currentSpeed, out float maxSpeed, out float maxTurnRate)
         {
-            float weightKg = ship.Grid.Physics.Mass;
-            float thrust = settings.smallGridSpeedFactor * (float)Math.Pow(weightKg, settings.smallGridWeightFactor + 1) * GRAVITY;
-            float frontalArea = weightKg * FRONT_AREA_FACTOR;
-            float fluidDrag = GetFluidDensity(ship) * SMALL_GRID_DRAG_COEFFICIENT * frontalArea;
-            fluidDrag = fluidDrag <= 0 ? 1 : fluidDrag;
-            return (float)Math.Sqrt((2 * thrust) / fluidDrag);
+            maxSpeed = GetGridBaseSpeed(ship, new SpeedFactors()
+            {
+                DragCoefficient = SMALL_GRID_DRAG_COEFFICIENT,
+                BaseWeight = settings.smallGridBaseWeight,
+                BaseTwr = settings.smallGridBaseTwr,
+                MinimumTwr = settings.smallGridMinimumTwr,
+                MaximumTwr = settings.smallGridMaximumTwr,
+                SpeedFactor = settings.smallGridSpeedFactor,
+                WeightFactor = settings.smallGridWeightFactor
+            });
+
+            maxTurnRate = GetGridTurnRate(ship, currentSpeed, new TurnFactors()
+            {
+                BaseWeight = settings.smallGridBaseWeight,
+                BaseTurnRate = settings.smallGridBaseTurnRate,
+                BaseTurnRateSpeed = settings.smallGridBaseTurnRateSpeed,
+                MinimumTurnRate = settings.smallGridMinimumTurnRate,
+                MaximumTurnRate = settings.smallGridMaximumTurnRate,
+                TurnRateSpeedFactor = settings.smallGridTurnRateSpeedFactor,
+                TurnRateWeightFactor = settings.smallGridTurnRateWeightFactor
+            });
         }
 
-        private float GetSmallGridJetBaseSpeed(Ship ship)
+        private void GetSmallGridJetBaseSpeed(Ship ship, float currentSpeed, out float maxSpeed, out float maxTurnRate)
         {
-            float weightKg = ship.Mass;
-            float thrust = settings.smallGridJetSpeedFactor * (float)Math.Pow(weightKg, settings.smallGridJetWeightFactor + 1) * GRAVITY;
-            float frontalArea = weightKg * FRONT_AREA_FACTOR;
-            float fluidDrag = GetFluidDensity(ship) * SMALL_GRID_DRAG_COEFFICIENT * frontalArea;
-            fluidDrag = fluidDrag <= 0 ? 1 : fluidDrag;
-            return (float)Math.Sqrt((2 * thrust) / fluidDrag);
+            maxSpeed = GetGridBaseSpeed(ship, new SpeedFactors()
+            {
+                DragCoefficient = SMALL_GRID_DRAG_COEFFICIENT,
+                BaseWeight = settings.smallGridJetBaseWeight,
+                BaseTwr = settings.smallGridJetBaseTwr,
+                MinimumTwr = settings.smallGridJetMinimumTwr,
+                MaximumTwr = settings.smallGridJetMaximumTwr,
+                SpeedFactor = settings.smallGridJetSpeedFactor,
+                WeightFactor = settings.smallGridJetWeightFactor,
+            });
+
+            maxTurnRate = GetGridTurnRate(ship, currentSpeed, new TurnFactors()
+            {
+                BaseWeight = settings.smallGridJetBaseWeight,
+                BaseTurnRate = settings.smallGridJetBaseTurnRate,
+                BaseTurnRateSpeed = settings.smallGridJetBaseTurnRateSpeed,
+                MinimumTurnRate = settings.smallGridJetMinimumTurnRate,
+                MaximumTurnRate = settings.smallGridJetMaximumTurnRate,
+                TurnRateSpeedFactor = settings.smallGridJetTurnRateSpeedFactor,
+                TurnRateWeightFactor = settings.smallGridJetTurnRateWeightFactor
+            });
         }
 
-        private float GetSmallGridTurnRate(float mass, float speed, Vector3 angularVelocity)
+        private float GetGridBaseSpeed(Ship ship, SpeedFactors values)
         {
-            float pitch = angularVelocity.Y;
-            float yaw = angularVelocity.Z;
-            float roll = angularVelocity.X;
+            // Calculate thrust from mass and base TWR, considering weight penalty
+            float twrPenalty = 1f - (values.WeightFactor * (float)Math.Log(ship.DryMass / values.BaseWeight));
+            float twr = MathHelper.Clamp(values.BaseTwr * twrPenalty, values.MinimumTwr, values.MaximumTwr);
+            float thrust = (ship.DryMass * GRAVITY) * twr * values.SpeedFactor;
+
+            // Calculate overall drag
+            float frontalArea = FRONT_AREA_FACTOR * ship.DryMass;
+            float fluidDrag = 0.5f * GetFluidDensity(ship) * values.DragCoefficient * frontalArea;
+            
+            // Calculate drag adjustments
+            if (ship.InAtmosphere && !ship.InWater)
+            {
+                float angleRadians = GetAngleFromGravityRadians(ship);
+                float angleDegrees = MathHelper.ToDegrees(angleRadians);
+                float angleFactor = (float)Math.Sin(angleRadians);
+
+                if (angleDegrees <= DIVE_MIN_ANGLE)
+                {
+                    fluidDrag -= (fluidDrag * DIVE_MAX_DRAG_REDUCTION * Math.Abs(angleFactor));
+                }
+            }
+
+            float baseSpeed = (float)Math.Sqrt((2 * thrust) / fluidDrag);
+            return baseSpeed;
+        }
+
+        private float GetAngleFromGravityRadians(Ship ship)
+        {
+            // Normalize both vectors
+            Vector3 normalizedVelocity = ship.Grid.Physics.LinearVelocity.Normalized();
+            Vector3 normalizedGravity = ship.Grid.NaturalGravity.Normalized();
+
+            // Calculate the dot product and angle between the vectors
+            float dotProduct = Vector3.Dot(normalizedVelocity, normalizedGravity);
+            float angle = (float)Math.Acos(dotProduct); // Angle in radians
+
+            return angle;
+        }
+
+        private float GetGridTurnRate(Ship ship, float currentSpeed, TurnFactors values)
+        {
+            float pitch = ship.AngularVelocity.Y;
+            float yaw = ship.AngularVelocity.Z;
+            float roll = ship.AngularVelocity.X;
 
             if (roll > pitch && roll > yaw)
             {
-                return MAXIMUM_ROLL_RATE;
+                return ENGINEER_SAFE_MAXIMUM_ROLL_RATE;
             }
             else
             {
-                float weightFactor = (float)Math.Pow(BASE_TURN_RATE_WEIGHT / mass, settings.smallGridTurnRateWeightFactor);
-                float speedFactor = (float)Math.Pow(BASE_TURN_RATE_SPEED / speed, settings.smallGridTurnRateSpeedFactor);
-                float targetTurnRateRad = BASE_TURN_RATE * weightFactor * speedFactor;
-                float clampedTurnRate = MathHelper.Clamp(targetTurnRateRad, MINIMUM_TURN_RATE, MAXIMUM_TURN_RATE);
+                float baseTurnRateRad = MathHelper.ToRadians(values.BaseTurnRate);
+                float minimumTurnRateRad = MathHelper.ToRadians(values.MinimumTurnRate);
+                float maximumTurnRateRad = MathHelper.ToRadians(values.MaximumTurnRate);
+
+                float weightFactor = (float)Math.Pow(values.BaseWeight / ship.DryMass, values.TurnRateWeightFactor);
+                float speedFactor = (float)Math.Pow(values.BaseTurnRateSpeed / currentSpeed, values.TurnRateSpeedFactor);
+                float targetTurnRateRad = baseTurnRateRad * weightFactor * speedFactor;
+                float clampedTurnRate = MathHelper.Clamp(targetTurnRateRad, minimumTurnRateRad, maximumTurnRateRad);
                 return clampedTurnRate;
             }
         }
@@ -527,19 +652,6 @@ namespace Khjin.CombatInterdiction
             }
             catch
             { /* Failed to call WaterMod. Table flip! */ }
-        }
-    
-        private IMyShipController GetController(Ship ship)
-        {
-            foreach (var controller in ship.Controllers)
-            {
-                if (controller.CanControlShip && controller.IsUnderControl)
-                {
-                    return controller;
-                }
-            }
-
-            return null;
         }
     }
 }

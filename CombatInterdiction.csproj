@@ -41,7 +41,7 @@
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="xcopy &quot;$(ProjectDir)Scripts\*&quot; &quot;%25APPDATA%25\SpaceEngineers\Mods\CombatInterdiction\Data\Scripts\CombatInterdiction\&quot; /s /e /y&#xD;&#xA;del &quot;$(TargetPath)&quot;" />
+    <Exec Command="xcopy &quot;$(ProjectDir)Scripts\*&quot; &quot;%25APPDATA%25\SpaceEngineers\Mods\CombatInterdiction (Dev)\Data\Scripts\CombatInterdiction\&quot; /s /e /y&#xD;&#xA;del &quot;$(TargetPath)&quot;" />
   </Target>
 
 </Project>

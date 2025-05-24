@@ -8,7 +8,7 @@ namespace Khjin.CombatInterdiction
 {
     public class CombatInterdictionSettings
     {
-        private const string configversion = "1.0.4";
+        private const string configversion = "1.0.6";
         private const string SECTION_NAME = "Combat Interdiction Settings";
         private const string SETTINGS_FILENAME = "combat_interdiction_settings.cfg";
         private MyIni iniUtil = null;
@@ -28,19 +28,62 @@ namespace Khjin.CombatInterdiction
         public int interdictionDuration;
         public float combatZoneRadius;
 
-        // Per Grid Speed Scaling
+        // Large grid atmo/ion based ships
+        public float largeGridBaseWeight;
+        public float largeGridBaseTwr;
+        public float largeGridMinimumTwr;
+        public float largeGridMaximumTwr;
         public float largeGridSpeedFactor;
         public float largeGridWeightFactor;
+        public float largeGridBaseTurnRate;
+        public float largeGridBaseTurnRateSpeed;
+        public float largeGridMinimumTurnRate;
+        public float largeGridMaximumTurnRate;
+        public float largeGridTurnRateWeightFactor;
+        public float largeGridTurnRateSpeedFactor;
+
+        // Large grid gas based ships
+        public float largeGridJetBaseWeight;
+        public float largeGridJetBaseTwr;
+        public float largeGridJetMinimumTwr;
+        public float largeGridJetMaximumTwr;
         public float largeGridJetSpeedFactor;
         public float largeGridJetWeightFactor;
+        public float largeGridJetBaseTurnRate;
+        public float largeGridJetBaseTurnRateSpeed;
+        public float largeGridJetMinimumTurnRate;
+        public float largeGridJetMaximumTurnRate;
+        public float largeGridJetTurnRateWeightFactor;
+        public float largeGridJetTurnRateSpeedFactor;
+
+        // Small grid atmo/ion based ships
+        public float smallGridBaseWeight;
+        public float smallGridBaseTwr;
+        public float smallGridMinimumTwr;
+        public float smallGridMaximumTwr;
         public float smallGridSpeedFactor;
         public float smallGridWeightFactor;
-        public float smallGridJetSpeedFactor;
-        public float smallGridJetWeightFactor;
-
-        // Per Grid Turn Rate Scaling
+        public float smallGridBaseTurnRate;
+        public float smallGridBaseTurnRateSpeed;
+        public float smallGridMinimumTurnRate;
+        public float smallGridMaximumTurnRate;
         public float smallGridTurnRateWeightFactor;
         public float smallGridTurnRateSpeedFactor;
+
+        // Small grid gas based ships
+        public float smallGridJetBaseWeight;
+        public float smallGridJetBaseTwr;
+        public float smallGridJetMinimumTwr;
+        public float smallGridJetMaximumTwr;
+        public float smallGridJetSpeedFactor;
+        public float smallGridJetWeightFactor;
+        public float smallGridJetBaseTurnRate;
+        public float smallGridJetBaseTurnRateSpeed;
+        public float smallGridJetMinimumTurnRate;
+        public float smallGridJetMaximumTurnRate;
+        public float smallGridJetTurnRateWeightFactor;
+        public float smallGridJetTurnRateSpeedFactor;
+
 
         private Dictionary<string, SettingLimits> settingLimits;
 
@@ -120,68 +163,300 @@ namespace Khjin.CombatInterdiction
                 MaxValue = 1000000,
             });
 
-            // Per Grid Speed Scaling
+            // Large grid atmo/ion based ships
+            settingLimits.Add(nameof(largeGridBaseWeight), new FloatLimits()
+            {
+                DefaultValue = 9700000.0f,
+                MinValue = 100000.0f,
+                MaxValue = 900000000.0f
+            });
+            settingLimits.Add(nameof(largeGridBaseTwr), new FloatLimits()
+            {
+                DefaultValue = 0.046f,
+                MinValue = 0.00001f,
+                MaxValue = 100.0f
+            });
+            settingLimits.Add(nameof(largeGridMinimumTwr), new FloatLimits()
+            {
+                DefaultValue = 0.02f,
+                MinValue = 0.00001f,
+                MaxValue = 100.0f
+            });
+            settingLimits.Add(nameof(largeGridMaximumTwr), new FloatLimits()
+            {
+                DefaultValue = 0.08f,
+                MinValue = 0.00001f,
+                MaxValue = 100.0f
+            });
             settingLimits.Add(nameof(largeGridSpeedFactor), new FloatLimits()
             {
-                DefaultValue = 5690f,
-                MinValue = 0.01f,
-                MaxValue = 50000f,
+                DefaultValue = 1210f,
+                MinValue = 0.00001f,
+                MaxValue = 100000.0f
             });
             settingLimits.Add(nameof(largeGridWeightFactor), new FloatLimits()
             {
-                DefaultValue = -0.219f,
-                MinValue = -0.9999f,
-                MaxValue = -0.0001f,
+                DefaultValue = 0.769f,
+                MinValue = 0.00001f,
+                MaxValue = 100.0f
+            });
+            settingLimits.Add(nameof(largeGridBaseTurnRate), new FloatLimits()
+            {
+                DefaultValue = 20.0f,
+                MinValue = 1.0f,
+                MaxValue = 90.0f
+            });
+            settingLimits.Add(nameof(largeGridBaseTurnRateSpeed), new FloatLimits()
+            {
+                DefaultValue = 660f,
+                MinValue = 1.0f,
+                MaxValue = 1000.0f
+            });
+            settingLimits.Add(nameof(largeGridMinimumTurnRate), new FloatLimits()
+            {
+                DefaultValue = 5.0f,
+                MinValue = 1.0f,
+                MaxValue = 90.0f
+            });
+            settingLimits.Add(nameof(largeGridMaximumTurnRate), new FloatLimits()
+            {
+                DefaultValue = 25.0f,
+                MinValue = 1.0f,
+                MaxValue = 90.0f
+            });
+            settingLimits.Add(nameof(largeGridTurnRateWeightFactor), new FloatLimits()
+            {
+                DefaultValue = 0.5f,
+                MinValue = 0.00001f,
+                MaxValue = 100.0f
+            });
+            settingLimits.Add(nameof(largeGridTurnRateSpeedFactor), new FloatLimits()
+            {
+                DefaultValue = 0.3f,
+                MinValue = 0.0001f,
+                MaxValue = 100.0f
+            });
+
+            // Large grid gas based ships
+            settingLimits.Add(nameof(largeGridJetBaseWeight), new FloatLimits()
+            {
+                DefaultValue = 9700000.0f,
+                MinValue = 100000.0f,
+                MaxValue = 900000000.0f
+            });
+            settingLimits.Add(nameof(largeGridJetBaseTwr), new FloatLimits()
+            {
+                DefaultValue = 0.046f,
+                MinValue = 0.00001f,
+                MaxValue = 100.0f
+            });
+            settingLimits.Add(nameof(largeGridJetMinimumTwr), new FloatLimits()
+            {
+                DefaultValue = 0.02f,
+                MinValue = 0.00001f,
+                MaxValue = 100.0f
+            });
+            settingLimits.Add(nameof(largeGridJetMaximumTwr), new FloatLimits()
+            {
+                DefaultValue = 0.08f,
+                MinValue = 0.00001f,
+                MaxValue = 100.0f
             });
             settingLimits.Add(nameof(largeGridJetSpeedFactor), new FloatLimits()
             {
-                DefaultValue = 5690f,
-                MinValue = 0.01f,
-                MaxValue = 50000f,
+                DefaultValue = 1210f,
+                MinValue = 0.00001f,
+                MaxValue = 100000.0f
             });
             settingLimits.Add(nameof(largeGridJetWeightFactor), new FloatLimits()
             {
-                DefaultValue = -0.219f,
-                MinValue = -0.9999f,
-                MaxValue = -0.0001f,
+                DefaultValue = 0.769f,
+                MinValue = 0.00001f,
+                MaxValue = 100.0f
+            });
+            settingLimits.Add(nameof(largeGridJetBaseTurnRate), new FloatLimits()
+            {
+                DefaultValue = 20.0f,
+                MinValue = 1.0f,
+                MaxValue = 90.0f
+            });
+            settingLimits.Add(nameof(largeGridJetBaseTurnRateSpeed), new FloatLimits()
+            {
+                DefaultValue = 660f,
+                MinValue = 1.0f,
+                MaxValue = 1000.0f
+            });
+            settingLimits.Add(nameof(largeGridJetMinimumTurnRate), new FloatLimits()
+            {
+                DefaultValue = 5.0f,
+                MinValue = 1.0f,
+                MaxValue = 90.0f
+            });
+            settingLimits.Add(nameof(largeGridJetMaximumTurnRate), new FloatLimits()
+            {
+                DefaultValue = 25.0f,
+                MinValue = 1.0f,
+                MaxValue = 90.0f
+            });
+            settingLimits.Add(nameof(largeGridJetTurnRateWeightFactor), new FloatLimits()
+            {
+                DefaultValue = 0.5f,
+                MinValue = 0.00001f,
+                MaxValue = 100.0f
+            });
+            settingLimits.Add(nameof(largeGridJetTurnRateSpeedFactor), new FloatLimits()
+            {
+                DefaultValue = 0.3f,
+                MinValue = 0.0001f,
+                MaxValue = 100.0f
+            });
+
+            // Small grid atmo/ion based ships
+            settingLimits.Add(nameof(smallGridBaseWeight), new FloatLimits()
+            {
+                DefaultValue = 15000.0f,
+                MinValue = 1000.0f,
+                MaxValue = 1000000.0f
+            });
+            settingLimits.Add(nameof(smallGridBaseTwr), new FloatLimits()
+            {
+                DefaultValue = 0.27f,
+                MinValue = 0.00001f,
+                MaxValue = 100.0f
+            });
+            settingLimits.Add(nameof(smallGridMinimumTwr), new FloatLimits()
+            {
+                DefaultValue = 0.19f,
+                MinValue = 0.00001f,
+                MaxValue = 100.0f
+            });
+            settingLimits.Add(nameof(smallGridMaximumTwr), new FloatLimits()
+            {
+                DefaultValue = 0.30f,
+                MinValue = 0.00001f,
+                MaxValue = 100.0f
             });
             settingLimits.Add(nameof(smallGridSpeedFactor), new FloatLimits()
             {
-                DefaultValue = 375f,
-                MinValue = 0.01f,
-                MaxValue = 5000.0f,
+                DefaultValue = 15.15f,
+                MinValue = 0.00001f,
+                MaxValue = 1000.0f
             });
             settingLimits.Add(nameof(smallGridWeightFactor), new FloatLimits()
             {
-                DefaultValue = -0.507f,
-                MinValue = -0.9999f,
-                MaxValue = -0.0001f,
+                DefaultValue = 0.165f,
+                MinValue = 0.00001f,
+                MaxValue = 10.0f
             });
-            settingLimits.Add(nameof(smallGridJetSpeedFactor), new FloatLimits()
+            settingLimits.Add(nameof(smallGridBaseTurnRate), new FloatLimits()
             {
-                DefaultValue = 3150f,
-                MinValue = 0.01f,
-                MaxValue = 5000.0f,
+                DefaultValue = 20f,
+                MinValue = 1.0f,
+                MaxValue = 90.0f
             });
-            settingLimits.Add(nameof(smallGridJetWeightFactor), new FloatLimits()
+            settingLimits.Add(nameof(smallGridBaseTurnRateSpeed), new FloatLimits()
             {
-                DefaultValue = -0.657f,
-                MinValue = -0.9999f,
-                MaxValue = -0.0001f,
+                DefaultValue = 560f,
+                MinValue = 1.0f,
+                MaxValue = 1000.0f
             });
-
-            // Per Grid Turn Rate Scaling
+            settingLimits.Add(nameof(smallGridMinimumTurnRate), new FloatLimits()
+            {
+                DefaultValue = 5.0f,
+                MinValue = 1.0f,
+                MaxValue = 90.0f
+            });
+            settingLimits.Add(nameof(smallGridMaximumTurnRate), new FloatLimits()
+            {
+                DefaultValue = 27.0f,
+                MinValue = 1.0f,
+                MaxValue = 90.0f
+            });
             settingLimits.Add(nameof(smallGridTurnRateWeightFactor), new FloatLimits()
             {
                 DefaultValue = 0.5f,
-                MinValue = 0.01f,
-                MaxValue = 10.0f,
+                MinValue = 0.00001f,
+                MaxValue = 10.0f
             });
             settingLimits.Add(nameof(smallGridTurnRateSpeedFactor), new FloatLimits()
             {
                 DefaultValue = 0.3f,
-                MinValue = 0.01f,
-                MaxValue = 10.0f,
+                MinValue = 0.00001f,
+                MaxValue = 10.0f
+            });
+
+            // Small grid gas based ships
+            settingLimits.Add(nameof(smallGridJetBaseWeight), new FloatLimits()
+            {
+                DefaultValue = 15000.0f,
+                MinValue = 1000.0f,
+                MaxValue = 1000000.0f
+            });
+            settingLimits.Add(nameof(smallGridJetBaseTwr), new FloatLimits()
+            {
+                DefaultValue = 1.11f,
+                MinValue = 0.00001f,
+                MaxValue = 100.0f
+            });
+            settingLimits.Add(nameof(smallGridJetMinimumTwr), new FloatLimits()
+            {
+                DefaultValue = 0.40f,
+                MinValue = 0.00001f,
+                MaxValue = 100.0f
+            });
+            settingLimits.Add(nameof(smallGridJetMaximumTwr), new FloatLimits()
+            {
+                DefaultValue = 1.45f,
+                MinValue = 0.00001f,
+                MaxValue = 100.0f
+            });
+            settingLimits.Add(nameof(smallGridJetSpeedFactor), new FloatLimits()
+            {
+                DefaultValue = 4.41f,
+                MinValue = 0.00001f,
+                MaxValue = 1000.0f
+            });
+            settingLimits.Add(nameof(smallGridJetWeightFactor), new FloatLimits()
+            {
+                DefaultValue = 0.22f,
+                MinValue = 0.00001f,
+                MaxValue = 10.0f
+            });
+            settingLimits.Add(nameof(smallGridJetBaseTurnRate), new FloatLimits()
+            {
+                DefaultValue = 18.0f,
+                MinValue = 1.0f,
+                MaxValue = 90.0f
+            });
+            settingLimits.Add(nameof(smallGridJetBaseTurnRateSpeed), new FloatLimits()
+            {
+                DefaultValue = 680f,
+                MinValue = 1.0f,
+                MaxValue = 1000.0f
+            });
+            settingLimits.Add(nameof(smallGridJetMinimumTurnRate), new FloatLimits()
+            {
+                DefaultValue = 5.0f,
+                MinValue = 1.0f,
+                MaxValue = 90.0f
+            });
+            settingLimits.Add(nameof(smallGridJetMaximumTurnRate), new FloatLimits()
+            {
+                DefaultValue = 25.0f,
+                MinValue = 1.0f,
+                MaxValue = 90.0f
+            });
+            settingLimits.Add(nameof(smallGridJetTurnRateWeightFactor), new FloatLimits()
+            {
+                DefaultValue = 0.5f,
+                MinValue = 0.00001f,
+                MaxValue = 10.0f
+            });
+            settingLimits.Add(nameof(smallGridJetTurnRateSpeedFactor), new FloatLimits()
+            {
+                DefaultValue = 0.3f,
+                MinValue = 0.00001f,
+                MaxValue = 10.0f
             });
 
             // Note: This must go AFTER defining the limits as defaults
@@ -217,19 +492,57 @@ namespace Khjin.CombatInterdiction
             interdictionDuration = ((IntLimits)settingLimits[nameof(interdictionDuration)]).DefaultValue;
             combatZoneRadius = ((FloatLimits)settingLimits[nameof(combatZoneRadius)]).DefaultValue;
 
-            // Per Grid Speed Scaling
+            // Large grid atmo/ion based ships
+            largeGridBaseWeight = ((FloatLimits)settingLimits[nameof(largeGridBaseWeight)]).DefaultValue;
+            largeGridBaseTwr = ((FloatLimits)settingLimits[nameof(largeGridBaseTwr)]).DefaultValue;
+            largeGridMinimumTwr = ((FloatLimits)settingLimits[nameof(largeGridMinimumTwr)]).DefaultValue;
+            largeGridMaximumTwr = ((FloatLimits)settingLimits[nameof(largeGridMaximumTwr)]).DefaultValue;
             largeGridSpeedFactor = ((FloatLimits)settingLimits[nameof(largeGridSpeedFactor)]).DefaultValue;
             largeGridWeightFactor = ((FloatLimits)settingLimits[nameof(largeGridWeightFactor)]).DefaultValue;
-            smallGridSpeedFactor = ((FloatLimits)settingLimits[nameof(smallGridSpeedFactor)]).DefaultValue;
-            smallGridWeightFactor = ((FloatLimits)settingLimits[nameof(smallGridWeightFactor)]).DefaultValue;
+            largeGridBaseTurnRate = ((FloatLimits)settingLimits[nameof(largeGridBaseTurnRate)]).DefaultValue;
+            largeGridMinimumTurnRate = ((FloatLimits)settingLimits[nameof(largeGridMinimumTurnRate)]).DefaultValue;
+            largeGridMaximumTurnRate = ((FloatLimits)settingLimits[nameof(largeGridMaximumTurnRate)]).DefaultValue;
+            largeGridTurnRateWeightFactor = ((FloatLimits)settingLimits[nameof(largeGridTurnRateWeightFactor)]).DefaultValue;
+            largeGridTurnRateSpeedFactor = ((FloatLimits)settingLimits[nameof(largeGridTurnRateSpeedFactor)]).DefaultValue;
+
+            // Large grid gas based ships
+            largeGridJetBaseWeight = ((FloatLimits)settingLimits[nameof(largeGridJetBaseWeight)]).DefaultValue;
+            largeGridJetBaseTwr = ((FloatLimits)settingLimits[nameof(largeGridJetBaseTwr)]).DefaultValue;
+            largeGridJetMinimumTwr = ((FloatLimits)settingLimits[nameof(largeGridJetMinimumTwr)]).DefaultValue;
+            largeGridJetMaximumTwr = ((FloatLimits)settingLimits[nameof(largeGridJetMaximumTwr)]).DefaultValue;
             largeGridJetSpeedFactor = ((FloatLimits)settingLimits[nameof(largeGridJetSpeedFactor)]).DefaultValue;
             largeGridJetWeightFactor = ((FloatLimits)settingLimits[nameof(largeGridJetWeightFactor)]).DefaultValue;
-            smallGridJetSpeedFactor = ((FloatLimits)settingLimits[nameof(smallGridJetSpeedFactor)]).DefaultValue;
-            smallGridJetWeightFactor = ((FloatLimits)settingLimits[nameof(smallGridJetWeightFactor)]).DefaultValue;
+            largeGridJetBaseTurnRate = ((FloatLimits)settingLimits[nameof(largeGridJetBaseTurnRate)]).DefaultValue;
+            largeGridJetMinimumTurnRate = ((FloatLimits)settingLimits[nameof(largeGridJetMinimumTurnRate)]).DefaultValue;
+            largeGridJetMaximumTurnRate = ((FloatLimits)settingLimits[nameof(largeGridJetMaximumTurnRate)]).DefaultValue;
+            largeGridJetTurnRateWeightFactor = ((FloatLimits)settingLimits[nameof(largeGridJetTurnRateWeightFactor)]).DefaultValue;
+            largeGridJetTurnRateSpeedFactor = ((FloatLimits)settingLimits[nameof(largeGridJetTurnRateSpeedFactor)]).DefaultValue;
 
-            // Per Grid Turn Rate Scaling
+            // Small grid atmo/ion based ships
+            smallGridBaseWeight = ((FloatLimits)settingLimits[nameof(smallGridBaseWeight)]).DefaultValue;
+            smallGridBaseTwr = ((FloatLimits)settingLimits[nameof(smallGridBaseTwr)]).DefaultValue;
+            smallGridMinimumTwr = ((FloatLimits)settingLimits[nameof(smallGridMinimumTwr)]).DefaultValue;
+            smallGridMaximumTwr = ((FloatLimits)settingLimits[nameof(smallGridMaximumTwr)]).DefaultValue;
+            smallGridSpeedFactor = ((FloatLimits)settingLimits[nameof(smallGridSpeedFactor)]).DefaultValue;
+            smallGridWeightFactor = ((FloatLimits)settingLimits[nameof(smallGridWeightFactor)]).DefaultValue;
+            smallGridBaseTurnRate = ((FloatLimits)settingLimits[nameof(smallGridBaseTurnRate)]).DefaultValue;
+            smallGridMinimumTurnRate = ((FloatLimits)settingLimits[nameof(smallGridMinimumTurnRate)]).DefaultValue;
+            smallGridMaximumTurnRate = ((FloatLimits)settingLimits[nameof(smallGridMaximumTurnRate)]).DefaultValue;
             smallGridTurnRateWeightFactor = ((FloatLimits)settingLimits[nameof(smallGridTurnRateWeightFactor)]).DefaultValue;
             smallGridTurnRateSpeedFactor = ((FloatLimits)settingLimits[nameof(smallGridTurnRateSpeedFactor)]).DefaultValue;
+
+            // Small grid gas based ships
+            smallGridJetBaseWeight = ((FloatLimits)settingLimits[nameof(smallGridJetBaseWeight)]).DefaultValue;
+            smallGridJetBaseTwr = ((FloatLimits)settingLimits[nameof(smallGridJetBaseTwr)]).DefaultValue;
+            smallGridJetMinimumTwr = ((FloatLimits)settingLimits[nameof(smallGridJetMinimumTwr)]).DefaultValue;
+            smallGridJetMaximumTwr = ((FloatLimits)settingLimits[nameof(smallGridJetMaximumTwr)]).DefaultValue;
+            smallGridJetSpeedFactor = ((FloatLimits)settingLimits[nameof(smallGridJetSpeedFactor)]).DefaultValue;
+            smallGridJetWeightFactor = ((FloatLimits)settingLimits[nameof(smallGridJetWeightFactor)]).DefaultValue;
+            smallGridJetBaseTurnRate = ((FloatLimits)settingLimits[nameof(smallGridJetBaseTurnRate)]).DefaultValue;
+            smallGridJetMinimumTurnRate = ((FloatLimits)settingLimits[nameof(smallGridJetMinimumTurnRate)]).DefaultValue;
+            smallGridJetMaximumTurnRate = ((FloatLimits)settingLimits[nameof(smallGridJetMaximumTurnRate)]).DefaultValue;
+            smallGridJetTurnRateWeightFactor = ((FloatLimits)settingLimits[nameof(smallGridJetTurnRateWeightFactor)]).DefaultValue;
+            smallGridJetTurnRateSpeedFactor = ((FloatLimits)settingLimits[nameof(smallGridJetTurnRateSpeedFactor)]).DefaultValue;
         }
 
         private void LoadSettings()
@@ -308,19 +621,57 @@ namespace Khjin.CombatInterdiction
             interdictionDuration = iniUtil.Get(SECTION_NAME, nameof(interdictionDuration)).ToInt32();
             combatZoneRadius = (float)iniUtil.Get(SECTION_NAME, nameof(combatZoneRadius)).ToDouble();
 
-            // Per Grid Speed Scaling
+            // Large grid atmo/ion based ships
+            largeGridBaseWeight = (float)iniUtil.Get(SECTION_NAME, nameof(largeGridBaseWeight)).ToDouble();
+            largeGridBaseTwr = (float)iniUtil.Get(SECTION_NAME, nameof(largeGridBaseTwr)).ToDouble();
+            largeGridMinimumTwr = (float)iniUtil.Get(SECTION_NAME, nameof(largeGridMinimumTwr)).ToDouble();
+            largeGridMaximumTwr = (float)iniUtil.Get(SECTION_NAME, nameof(largeGridMaximumTwr)).ToDouble();
             largeGridSpeedFactor = (float)iniUtil.Get(SECTION_NAME, nameof(largeGridSpeedFactor)).ToDouble();
             largeGridWeightFactor = (float)iniUtil.Get(SECTION_NAME, nameof(largeGridWeightFactor)).ToDouble();
-            smallGridSpeedFactor = (float)iniUtil.Get(SECTION_NAME, nameof(smallGridSpeedFactor)).ToDouble();
-            smallGridWeightFactor = (float)iniUtil.Get(SECTION_NAME, nameof(smallGridWeightFactor)).ToDouble();
+            largeGridBaseTurnRate = (float)iniUtil.Get(SECTION_NAME, nameof(largeGridBaseTurnRate)).ToDouble();
+            largeGridMinimumTurnRate = (float)iniUtil.Get(SECTION_NAME, nameof(largeGridMinimumTurnRate)).ToDouble();
+            largeGridMaximumTurnRate = (float)iniUtil.Get(SECTION_NAME, nameof(largeGridMaximumTurnRate)).ToDouble();
+            largeGridTurnRateWeightFactor = (float)iniUtil.Get(SECTION_NAME, nameof(largeGridTurnRateWeightFactor)).ToDouble();
+            largeGridTurnRateSpeedFactor = (float)iniUtil.Get(SECTION_NAME, nameof(largeGridTurnRateSpeedFactor)).ToDouble();
+
+            // Large grid gas based ships
+            largeGridJetBaseWeight = (float)iniUtil.Get(SECTION_NAME, nameof(largeGridJetBaseWeight)).ToDouble();
+            largeGridJetBaseTwr = (float)iniUtil.Get(SECTION_NAME, nameof(largeGridJetBaseTwr)).ToDouble();
+            largeGridJetMinimumTwr = (float)iniUtil.Get(SECTION_NAME, nameof(largeGridJetMinimumTwr)).ToDouble();
+            largeGridJetMaximumTwr = (float)iniUtil.Get(SECTION_NAME, nameof(largeGridJetMaximumTwr)).ToDouble();
             largeGridJetSpeedFactor = (float)iniUtil.Get(SECTION_NAME, nameof(largeGridJetSpeedFactor)).ToDouble();
             largeGridJetWeightFactor = (float)iniUtil.Get(SECTION_NAME, nameof(largeGridJetWeightFactor)).ToDouble();
-            smallGridJetSpeedFactor = (float)iniUtil.Get(SECTION_NAME, nameof(smallGridJetSpeedFactor)).ToDouble();
-            smallGridJetWeightFactor = (float)iniUtil.Get(SECTION_NAME, nameof(smallGridJetWeightFactor)).ToDouble();
+            largeGridJetBaseTurnRate = (float)iniUtil.Get(SECTION_NAME, nameof(largeGridJetBaseTurnRate)).ToDouble();
+            largeGridJetMinimumTurnRate = (float)iniUtil.Get(SECTION_NAME, nameof(largeGridJetMinimumTurnRate)).ToDouble();
+            largeGridJetMaximumTurnRate = (float)iniUtil.Get(SECTION_NAME, nameof(largeGridJetMaximumTurnRate)).ToDouble();
+            largeGridJetTurnRateWeightFactor = (float)iniUtil.Get(SECTION_NAME, nameof(largeGridJetTurnRateWeightFactor)).ToDouble();
+            largeGridJetTurnRateSpeedFactor = (float)iniUtil.Get(SECTION_NAME, nameof(largeGridJetTurnRateSpeedFactor)).ToDouble();
 
-            // Per Grid Turn Rate Scaling
+            // Small grid atmo/ion based ships
+            smallGridBaseWeight = (float)iniUtil.Get(SECTION_NAME, nameof(smallGridBaseWeight)).ToDouble();
+            smallGridBaseTwr = (float)iniUtil.Get(SECTION_NAME, nameof(smallGridBaseTwr)).ToDouble();
+            smallGridMinimumTwr = (float)iniUtil.Get(SECTION_NAME, nameof(smallGridMinimumTwr)).ToDouble();
+            smallGridMaximumTwr = (float)iniUtil.Get(SECTION_NAME, nameof(smallGridMaximumTwr)).ToDouble();
+            smallGridSpeedFactor = (float)iniUtil.Get(SECTION_NAME, nameof(smallGridSpeedFactor)).ToDouble();
+            smallGridWeightFactor = (float)iniUtil.Get(SECTION_NAME, nameof(smallGridWeightFactor)).ToDouble();
+            smallGridBaseTurnRate = (float)iniUtil.Get(SECTION_NAME, nameof(smallGridBaseTurnRate)).ToDouble();
+            smallGridMinimumTurnRate = (float)iniUtil.Get(SECTION_NAME, nameof(smallGridMinimumTurnRate)).ToDouble();
+            smallGridMaximumTurnRate = (float)iniUtil.Get(SECTION_NAME, nameof(smallGridMaximumTurnRate)).ToDouble();
             smallGridTurnRateWeightFactor = (float)iniUtil.Get(SECTION_NAME, nameof(smallGridTurnRateWeightFactor)).ToDouble();
             smallGridTurnRateSpeedFactor = (float)iniUtil.Get(SECTION_NAME, nameof(smallGridTurnRateSpeedFactor)).ToDouble();
+
+            // Small grid gas based ships
+            smallGridJetBaseWeight = (float)iniUtil.Get(SECTION_NAME, nameof(smallGridJetBaseWeight)).ToDouble();
+            smallGridJetBaseTwr = (float)iniUtil.Get(SECTION_NAME, nameof(smallGridJetBaseTwr)).ToDouble();
+            smallGridJetMinimumTwr = (float)iniUtil.Get(SECTION_NAME, nameof(smallGridJetMinimumTwr)).ToDouble();
+            smallGridJetMaximumTwr = (float)iniUtil.Get(SECTION_NAME, nameof(smallGridJetMaximumTwr)).ToDouble();
+            smallGridJetSpeedFactor = (float)iniUtil.Get(SECTION_NAME, nameof(smallGridJetSpeedFactor)).ToDouble();
+            smallGridJetWeightFactor = (float)iniUtil.Get(SECTION_NAME, nameof(smallGridJetWeightFactor)).ToDouble();
+            smallGridJetBaseTurnRate = (float)iniUtil.Get(SECTION_NAME, nameof(smallGridJetBaseTurnRate)).ToDouble();
+            smallGridJetMinimumTurnRate = (float)iniUtil.Get(SECTION_NAME, nameof(smallGridJetMinimumTurnRate)).ToDouble();
+            smallGridJetMaximumTurnRate = (float)iniUtil.Get(SECTION_NAME, nameof(smallGridJetMaximumTurnRate)).ToDouble();
+            smallGridJetTurnRateWeightFactor = (float)iniUtil.Get(SECTION_NAME, nameof(smallGridJetTurnRateWeightFactor)).ToDouble();
+            smallGridJetTurnRateSpeedFactor = (float)iniUtil.Get(SECTION_NAME, nameof(smallGridJetTurnRateSpeedFactor)).ToDouble();
         }
 
         private void WriteSettings()
@@ -341,90 +692,68 @@ namespace Khjin.CombatInterdiction
             iniUtil.Set(SECTION_NAME, nameof(interdictionDuration), interdictionDuration);
             iniUtil.Set(SECTION_NAME, nameof(combatZoneRadius), combatZoneRadius);
 
-            // Per Grid Speed Scaling
+            // Large grid atmo/ion based ships
+            iniUtil.Set(SECTION_NAME, nameof(largeGridBaseWeight), largeGridBaseWeight);
+            iniUtil.Set(SECTION_NAME, nameof(largeGridBaseTwr), largeGridBaseTwr);
+            iniUtil.Set(SECTION_NAME, nameof(largeGridMinimumTwr), largeGridMinimumTwr);
+            iniUtil.Set(SECTION_NAME, nameof(largeGridMaximumTwr), largeGridMaximumTwr);
             iniUtil.Set(SECTION_NAME, nameof(largeGridSpeedFactor), largeGridSpeedFactor);
             iniUtil.Set(SECTION_NAME, nameof(largeGridWeightFactor), largeGridWeightFactor);
-            iniUtil.Set(SECTION_NAME, nameof(smallGridSpeedFactor), smallGridSpeedFactor);
-            iniUtil.Set(SECTION_NAME, nameof(smallGridWeightFactor), smallGridWeightFactor);
+            iniUtil.Set(SECTION_NAME, nameof(largeGridBaseTurnRate), largeGridBaseTurnRate);
+            iniUtil.Set(SECTION_NAME, nameof(largeGridMinimumTurnRate), largeGridMinimumTurnRate);
+            iniUtil.Set(SECTION_NAME, nameof(largeGridMaximumTurnRate), largeGridMaximumTurnRate);
+            iniUtil.Set(SECTION_NAME, nameof(largeGridTurnRateWeightFactor), largeGridTurnRateWeightFactor);
+            iniUtil.Set(SECTION_NAME, nameof(largeGridTurnRateSpeedFactor), largeGridTurnRateSpeedFactor);
+
+            // Large grid gas based ships
+            iniUtil.Set(SECTION_NAME, nameof(largeGridJetBaseWeight), largeGridJetBaseWeight);
+            iniUtil.Set(SECTION_NAME, nameof(largeGridJetBaseTwr), largeGridJetBaseTwr);
+            iniUtil.Set(SECTION_NAME, nameof(largeGridJetMinimumTwr), largeGridJetMinimumTwr);
+            iniUtil.Set(SECTION_NAME, nameof(largeGridJetMaximumTwr), largeGridJetMaximumTwr);
             iniUtil.Set(SECTION_NAME, nameof(largeGridJetSpeedFactor), largeGridJetSpeedFactor);
             iniUtil.Set(SECTION_NAME, nameof(largeGridJetWeightFactor), largeGridJetWeightFactor);
-            iniUtil.Set(SECTION_NAME, nameof(smallGridJetSpeedFactor), smallGridJetSpeedFactor);
-            iniUtil.Set(SECTION_NAME, nameof(smallGridJetWeightFactor), smallGridJetWeightFactor);
+            iniUtil.Set(SECTION_NAME, nameof(largeGridJetBaseTurnRate), largeGridJetBaseTurnRate);
+            iniUtil.Set(SECTION_NAME, nameof(largeGridJetMinimumTurnRate), largeGridJetMinimumTurnRate);
+            iniUtil.Set(SECTION_NAME, nameof(largeGridJetMaximumTurnRate), largeGridJetMaximumTurnRate);
+            iniUtil.Set(SECTION_NAME, nameof(largeGridJetTurnRateWeightFactor), largeGridJetTurnRateWeightFactor);
+            iniUtil.Set(SECTION_NAME, nameof(largeGridJetTurnRateSpeedFactor), largeGridJetTurnRateSpeedFactor);
 
-            // Per Grid Turn Rate Scaling
+            // Small grid atmo/ion based ships
+            iniUtil.Set(SECTION_NAME, nameof(smallGridBaseWeight), smallGridBaseWeight);
+            iniUtil.Set(SECTION_NAME, nameof(smallGridBaseTwr), smallGridBaseTwr);
+            iniUtil.Set(SECTION_NAME, nameof(smallGridMinimumTwr), smallGridMinimumTwr);
+            iniUtil.Set(SECTION_NAME, nameof(smallGridMaximumTwr), smallGridMaximumTwr);
+            iniUtil.Set(SECTION_NAME, nameof(smallGridSpeedFactor), smallGridSpeedFactor);
+            iniUtil.Set(SECTION_NAME, nameof(smallGridWeightFactor), smallGridWeightFactor);
+            iniUtil.Set(SECTION_NAME, nameof(smallGridBaseTurnRate), smallGridBaseTurnRate);
+            iniUtil.Set(SECTION_NAME, nameof(smallGridMinimumTurnRate), smallGridMinimumTurnRate);
+            iniUtil.Set(SECTION_NAME, nameof(smallGridMaximumTurnRate), smallGridMaximumTurnRate);
             iniUtil.Set(SECTION_NAME, nameof(smallGridTurnRateWeightFactor), smallGridTurnRateWeightFactor);
             iniUtil.Set(SECTION_NAME, nameof(smallGridTurnRateSpeedFactor), smallGridTurnRateSpeedFactor);
+
+            // Small grid gas based ships
+            iniUtil.Set(SECTION_NAME, nameof(smallGridJetBaseWeight), smallGridJetBaseWeight);
+            iniUtil.Set(SECTION_NAME, nameof(smallGridJetBaseTwr), smallGridJetBaseTwr);
+            iniUtil.Set(SECTION_NAME, nameof(smallGridJetMinimumTwr), smallGridJetMinimumTwr);
+            iniUtil.Set(SECTION_NAME, nameof(smallGridJetMaximumTwr), smallGridJetMaximumTwr);
+            iniUtil.Set(SECTION_NAME, nameof(smallGridJetSpeedFactor), smallGridJetSpeedFactor);
+            iniUtil.Set(SECTION_NAME, nameof(smallGridJetWeightFactor), smallGridJetWeightFactor);
+            iniUtil.Set(SECTION_NAME, nameof(smallGridJetBaseTurnRate), smallGridJetBaseTurnRate);
+            iniUtil.Set(SECTION_NAME, nameof(smallGridJetMinimumTurnRate), smallGridJetMinimumTurnRate);
+            iniUtil.Set(SECTION_NAME, nameof(smallGridJetMaximumTurnRate), smallGridJetMaximumTurnRate);
+            iniUtil.Set(SECTION_NAME, nameof(smallGridJetTurnRateWeightFactor), smallGridJetTurnRateWeightFactor);
+            iniUtil.Set(SECTION_NAME, nameof(smallGridJetTurnRateSpeedFactor), smallGridJetTurnRateSpeedFactor);
         }
 
         public string GetAvailableSettings()
         {
-            string availableSettings =
-
-            // Global Settings
-            $"{CombatInterdictionCommands.COMMAND_PREFIX}{nameof(allowSuperCruise)}, " +
-            $"{CombatInterdictionCommands.COMMAND_PREFIX}{nameof(globalLargeGridMaxSpeed)}, " +
-            $"{CombatInterdictionCommands.COMMAND_PREFIX}{nameof(globalSmallGridMaxSpeed)}, " +
-            $"{CombatInterdictionCommands.COMMAND_PREFIX}{nameof(largeGridMaxSpeed)}, " +
-            $"{CombatInterdictionCommands.COMMAND_PREFIX}{nameof(smallGridMaxSpeed)}, " +
-            $"{CombatInterdictionCommands.COMMAND_PREFIX}{nameof(minimumGridVolume)}, " +
-
-            // Boost and Combat
-            $"{CombatInterdictionCommands.COMMAND_PREFIX}{nameof(smallGridBoostSpeedMultiplier)}, " +
-            $"{CombatInterdictionCommands.COMMAND_PREFIX}{nameof(largeGridBoostSpeedMultiplier)}, " +
-            $"{CombatInterdictionCommands.COMMAND_PREFIX}{nameof(largeGridBoostTwr)}, " +
-            $"{CombatInterdictionCommands.COMMAND_PREFIX}{nameof(interdictionDuration)}, " +
-            $"{CombatInterdictionCommands.COMMAND_PREFIX}{nameof(combatZoneRadius)}, " +
-
-            // Per Grid Speed Scaling
-            $"{CombatInterdictionCommands.COMMAND_PREFIX}{nameof(largeGridSpeedFactor)}, " +
-            $"{CombatInterdictionCommands.COMMAND_PREFIX}{nameof(largeGridWeightFactor)}, " +
-            $"{CombatInterdictionCommands.COMMAND_PREFIX}{nameof(largeGridJetSpeedFactor)}, " +
-            $"{CombatInterdictionCommands.COMMAND_PREFIX}{nameof(largeGridJetWeightFactor)}, " +
-            $"{CombatInterdictionCommands.COMMAND_PREFIX}{nameof(smallGridSpeedFactor)}, " +
-            $"{CombatInterdictionCommands.COMMAND_PREFIX}{nameof(smallGridWeightFactor)}, " +
-            $"{CombatInterdictionCommands.COMMAND_PREFIX}{nameof(smallGridJetSpeedFactor)}, " +
-            $"{CombatInterdictionCommands.COMMAND_PREFIX}{nameof(smallGridJetWeightFactor)}, " +
-
-            // Per Grid Turn Rate Scaling
-            $"{CombatInterdictionCommands.COMMAND_PREFIX}{nameof(smallGridTurnRateWeightFactor)}, " +
-            $"{CombatInterdictionCommands.COMMAND_PREFIX}{nameof(smallGridTurnRateSpeedFactor)}";
-
+            string availableSettings = "Displaying available settings.";
             return availableSettings;
         }
 
         public string GetCurrentSettings()
         {
-            string currentSettings =
-
-                // Global Settings
-                $"{nameof(allowSuperCruise)}={allowSuperCruise}, " +
-                $"{nameof(globalLargeGridMaxSpeed)}={globalLargeGridMaxSpeed}, " +
-                $"{nameof(globalSmallGridMaxSpeed)}={globalSmallGridMaxSpeed}, " +
-                $"{nameof(largeGridMaxSpeed)}={largeGridMaxSpeed}, " +
-                $"{nameof(smallGridMaxSpeed)}={smallGridMaxSpeed}, " +
-                $"{nameof(minimumGridVolume)}={minimumGridVolume}, " +
-
-                // Boost and Combat
-                $"{nameof(smallGridBoostSpeedMultiplier)}={smallGridBoostSpeedMultiplier}, " +
-                $"{nameof(largeGridBoostSpeedMultiplier)}={largeGridBoostSpeedMultiplier}, " +
-                $"{nameof(largeGridBoostTwr)}={largeGridBoostTwr}, " +
-                $"{nameof(interdictionDuration)}={interdictionDuration}, " +
-                $"{nameof(combatZoneRadius)}={combatZoneRadius}, " +
-
-                // Environment and Additional Factors
-                $"{nameof(largeGridSpeedFactor)}={largeGridSpeedFactor}, " +
-                $"{nameof(largeGridWeightFactor)}={largeGridWeightFactor}, " +
-                $"{nameof(largeGridJetSpeedFactor)}={largeGridJetSpeedFactor}, " +
-                $"{nameof(largeGridJetWeightFactor)}={largeGridJetWeightFactor}, " +
-                $"{nameof(smallGridSpeedFactor)}={smallGridSpeedFactor}, " +
-                $"{nameof(smallGridWeightFactor)}={smallGridWeightFactor}, " +
-                $"{nameof(smallGridJetSpeedFactor)}={smallGridJetSpeedFactor}, " +
-                $"{nameof(smallGridJetWeightFactor)}={smallGridJetWeightFactor}, " +
-
-                // Per Grid Turn Rate Scaling
-                $"{nameof(smallGridTurnRateWeightFactor)}={smallGridTurnRateWeightFactor}, " +
-                $"{nameof(smallGridTurnRateSpeedFactor)}={smallGridTurnRateSpeedFactor}";
-
+            string currentSettings = "Please type /c<setting name> to view a specific setting.";
             return currentSettings;
         }
 
@@ -447,19 +776,58 @@ namespace Khjin.CombatInterdiction
                 case nameof(interdictionDuration): return interdictionDuration.ToString();
                 case nameof(combatZoneRadius): return combatZoneRadius.ToString();
 
-                // Per Grid Speed Scaling
+                // Large grid atmo/ion based ships
+                case nameof(largeGridBaseWeight): return largeGridBaseWeight.ToString();
+                case nameof(largeGridBaseTwr): return largeGridBaseTwr.ToString();
+                case nameof(largeGridMinimumTwr): return largeGridMinimumTwr.ToString();
+                case nameof(largeGridMaximumTwr): return largeGridMaximumTwr.ToString();
                 case nameof(largeGridSpeedFactor): return largeGridSpeedFactor.ToString();
                 case nameof(largeGridWeightFactor): return largeGridWeightFactor.ToString();
+                case nameof(largeGridBaseTurnRate): return largeGridBaseTurnRate.ToString();
+                case nameof(largeGridMinimumTurnRate): return largeGridMinimumTurnRate.ToString();
+                case nameof(largeGridMaximumTurnRate): return largeGridMaximumTurnRate.ToString();
+                case nameof(largeGridTurnRateWeightFactor): return largeGridTurnRateWeightFactor.ToString();
+                case nameof(largeGridTurnRateSpeedFactor): return largeGridTurnRateSpeedFactor.ToString();
+
+                // Large grid gas based ships
+                case nameof(largeGridJetBaseWeight): return largeGridJetBaseWeight.ToString();
+                case nameof(largeGridJetBaseTwr): return largeGridJetBaseTwr.ToString();
+                case nameof(largeGridJetMinimumTwr): return largeGridJetMinimumTwr.ToString();
+                case nameof(largeGridJetMaximumTwr): return largeGridJetMaximumTwr.ToString();
                 case nameof(largeGridJetSpeedFactor): return largeGridJetSpeedFactor.ToString();
                 case nameof(largeGridJetWeightFactor): return largeGridJetWeightFactor.ToString();
+                case nameof(largeGridJetBaseTurnRate): return largeGridJetBaseTurnRate.ToString();
+                case nameof(largeGridJetMinimumTurnRate): return largeGridJetMinimumTurnRate.ToString();
+                case nameof(largeGridJetMaximumTurnRate): return largeGridJetMaximumTurnRate.ToString();
+                case nameof(largeGridJetTurnRateWeightFactor): return largeGridJetTurnRateWeightFactor.ToString();
+                case nameof(largeGridJetTurnRateSpeedFactor): return largeGridJetTurnRateSpeedFactor.ToString();
+
+                // Small grid atmo/ion based ships
+                case nameof(smallGridBaseWeight): return smallGridBaseWeight.ToString();
+                case nameof(smallGridBaseTwr): return smallGridBaseTwr.ToString();
+                case nameof(smallGridMinimumTwr): return smallGridMinimumTwr.ToString();
+                case nameof(smallGridMaximumTwr): return smallGridMaximumTwr.ToString();
                 case nameof(smallGridSpeedFactor): return smallGridSpeedFactor.ToString();
                 case nameof(smallGridWeightFactor): return smallGridWeightFactor.ToString();
-                case nameof(smallGridJetSpeedFactor): return smallGridJetSpeedFactor.ToString();
-                case nameof(smallGridJetWeightFactor): return smallGridJetWeightFactor.ToString();
-
-                // Per Grid Turn Rate Scaling
+                case nameof(smallGridBaseTurnRate): return smallGridBaseTurnRate.ToString();
+                case nameof(smallGridMinimumTurnRate): return smallGridMinimumTurnRate.ToString();
+                case nameof(smallGridMaximumTurnRate): return smallGridMaximumTurnRate.ToString();
                 case nameof(smallGridTurnRateWeightFactor): return smallGridTurnRateWeightFactor.ToString();
                 case nameof(smallGridTurnRateSpeedFactor): return smallGridTurnRateSpeedFactor.ToString();
+
+                // Small grid gas based ships
+                case nameof(smallGridJetBaseWeight): return smallGridJetBaseWeight.ToString();
+                case nameof(smallGridJetBaseTwr): return smallGridJetBaseTwr.ToString();
+                case nameof(smallGridJetMinimumTwr): return smallGridJetMinimumTwr.ToString();
+                case nameof(smallGridJetMaximumTwr): return smallGridJetMaximumTwr.ToString();
+                case nameof(smallGridJetSpeedFactor): return smallGridJetSpeedFactor.ToString();
+                case nameof(smallGridJetWeightFactor): return smallGridJetWeightFactor.ToString();
+                case nameof(smallGridJetBaseTurnRate): return smallGridJetBaseTurnRate.ToString();
+                case nameof(smallGridJetMinimumTurnRate): return smallGridJetMinimumTurnRate.ToString();
+                case nameof(smallGridJetMaximumTurnRate): return smallGridJetMaximumTurnRate.ToString();
+                case nameof(smallGridJetTurnRateWeightFactor): return smallGridJetTurnRateWeightFactor.ToString();
+                case nameof(smallGridJetTurnRateSpeedFactor): return smallGridJetTurnRateSpeedFactor.ToString();
+
                 default: return string.Empty;
             }
         }
@@ -496,19 +864,58 @@ namespace Khjin.CombatInterdiction
                         case nameof(interdictionDuration): interdictionDuration = int.Parse(value); break;
                         case nameof(combatZoneRadius): combatZoneRadius = float.Parse(value); break;
 
-                        // Per Grid Speed Scaling
+                        // Large grid atmo/ion based ships
+                        case nameof(largeGridBaseWeight): largeGridBaseWeight = float.Parse(value); break;
+                        case nameof(largeGridBaseTwr): largeGridBaseTwr = float.Parse(value); break;
+                        case nameof(largeGridMinimumTwr): largeGridMinimumTwr = float.Parse(value); break;
+                        case nameof(largeGridMaximumTwr): largeGridMaximumTwr = float.Parse(value); break;
                         case nameof(largeGridSpeedFactor): largeGridSpeedFactor = float.Parse(value); break;
                         case nameof(largeGridWeightFactor): largeGridWeightFactor = float.Parse(value); break;
+                        case nameof(largeGridBaseTurnRate): largeGridBaseTurnRate = float.Parse(value); break;
+                        case nameof(largeGridMinimumTurnRate): largeGridMinimumTurnRate = float.Parse(value); break;
+                        case nameof(largeGridMaximumTurnRate): largeGridMaximumTurnRate = float.Parse(value); break;
+                        case nameof(largeGridTurnRateWeightFactor): largeGridTurnRateWeightFactor = float.Parse(value); break;
+                        case nameof(largeGridTurnRateSpeedFactor): largeGridTurnRateSpeedFactor = float.Parse(value); break;
+
+                        // Large grid gas based ships
+                        case nameof(largeGridJetBaseWeight): largeGridJetBaseWeight = float.Parse(value); break;
+                        case nameof(largeGridJetBaseTwr): largeGridJetBaseTwr = float.Parse(value); break;
+                        case nameof(largeGridJetMinimumTwr): largeGridJetMinimumTwr = float.Parse(value); break;
+                        case nameof(largeGridJetMaximumTwr): largeGridJetMaximumTwr = float.Parse(value); break;
                         case nameof(largeGridJetSpeedFactor): largeGridJetSpeedFactor = float.Parse(value); break;
                         case nameof(largeGridJetWeightFactor): largeGridJetWeightFactor = float.Parse(value); break;
+                        case nameof(largeGridJetBaseTurnRate): largeGridJetBaseTurnRate = float.Parse(value); break;
+                        case nameof(largeGridJetMinimumTurnRate): largeGridJetMinimumTurnRate = float.Parse(value); break;
+                        case nameof(largeGridJetMaximumTurnRate): largeGridJetMaximumTurnRate = float.Parse(value); break;
+                        case nameof(largeGridJetTurnRateWeightFactor): largeGridJetTurnRateWeightFactor = float.Parse(value); break;
+                        case nameof(largeGridJetTurnRateSpeedFactor): largeGridJetTurnRateSpeedFactor = float.Parse(value); break;
+
+                        // Small grid atmo/ion based ships
+                        case nameof(smallGridBaseWeight): smallGridBaseWeight = float.Parse(value); break;
+                        case nameof(smallGridBaseTwr): smallGridBaseTwr = float.Parse(value); break;
+                        case nameof(smallGridMinimumTwr): smallGridMinimumTwr = float.Parse(value); break;
+                        case nameof(smallGridMaximumTwr): smallGridMaximumTwr = float.Parse(value); break;
                         case nameof(smallGridSpeedFactor): smallGridSpeedFactor = float.Parse(value); break;
                         case nameof(smallGridWeightFactor): smallGridWeightFactor = float.Parse(value); break;
-                        case nameof(smallGridJetSpeedFactor): smallGridJetSpeedFactor = float.Parse(value); break;
-                        case nameof(smallGridJetWeightFactor): smallGridJetWeightFactor = float.Parse(value); break;
-
-                        // Per Grid Turn Rate Scaling
+                        case nameof(smallGridBaseTurnRate): smallGridBaseTurnRate = float.Parse(value); break;
+                        case nameof(smallGridMinimumTurnRate): smallGridMinimumTurnRate = float.Parse(value); break;
+                        case nameof(smallGridMaximumTurnRate): smallGridMaximumTurnRate = float.Parse(value); break;
                         case nameof(smallGridTurnRateWeightFactor): smallGridTurnRateWeightFactor = float.Parse(value); break;
                         case nameof(smallGridTurnRateSpeedFactor): smallGridTurnRateSpeedFactor = float.Parse(value); break;
+
+                        // Small grid gas based ships
+                        case nameof(smallGridJetBaseWeight): smallGridJetBaseWeight = float.Parse(value); break;
+                        case nameof(smallGridJetBaseTwr): smallGridJetBaseTwr = float.Parse(value); break;
+                        case nameof(smallGridJetMinimumTwr): smallGridJetMinimumTwr = float.Parse(value); break;
+                        case nameof(smallGridJetMaximumTwr): smallGridJetMaximumTwr = float.Parse(value); break;
+                        case nameof(smallGridJetSpeedFactor): smallGridJetSpeedFactor = float.Parse(value); break;
+                        case nameof(smallGridJetWeightFactor): smallGridJetWeightFactor = float.Parse(value); break;
+                        case nameof(smallGridJetBaseTurnRate): smallGridJetBaseTurnRate = float.Parse(value); break;
+                        case nameof(smallGridJetMinimumTurnRate): smallGridJetMinimumTurnRate = float.Parse(value); break;
+                        case nameof(smallGridJetMaximumTurnRate): smallGridJetMaximumTurnRate = float.Parse(value); break;
+                        case nameof(smallGridJetTurnRateWeightFactor): smallGridJetTurnRateWeightFactor = float.Parse(value); break;
+                        case nameof(smallGridJetTurnRateSpeedFactor): smallGridJetTurnRateSpeedFactor = float.Parse(value); break;
+
                         default: return false;
                     }
                 }

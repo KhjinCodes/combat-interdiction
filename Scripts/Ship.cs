@@ -20,6 +20,9 @@ namespace Khjin.CombatInterdiction
         private bool isBlocksInitialized;
         private bool isHooksInitialized;
         private int waitHookInitialize;
+        private float baseMass;
+        private float physicalMass;
+        private float lastMassRefreshTicks;
 
         public int InterdictionDuration;
         public float NaturalGravity;
@@ -41,6 +44,7 @@ namespace Khjin.CombatInterdiction
             isBlocksInitialized = false;
             isHooksInitialized = false;
             waitHookInitialize = 60 * 5;
+            lastMassRefreshTicks = 0;
         }
 
         public void InitializeBlocksOnce()
@@ -49,11 +53,10 @@ namespace Khjin.CombatInterdiction
             isBlocksInitialized = true;
 
             gridGroupData = grid.GetGridGroup(GridLinkTypeEnum.Mechanical);
-            gridGroupData.GetGrids(grids);
-
             lock (grids)
             {
-                foreach(IMyCubeGrid grid in grids)
+                gridGroupData.GetGrids(grids);
+                foreach (IMyCubeGrid grid in grids)
                 {
                     fatBlocks = grid.GetFatBlocks<IMyCubeBlock>();
                     lock (fatBlocks)
@@ -95,6 +98,16 @@ namespace Khjin.CombatInterdiction
                     ((MyCubeGrid)grid).OnFatBlockRemoved += Grid_OnFatBlockRemoved;
                     ((MyCubeGrid)grid).OnMarkForClose += Grid_OnMarkForClose;
                 }
+            }
+        }
+
+        public void UpdateMass()
+        {
+            lastMassRefreshTicks--;
+            if (lastMassRefreshTicks <= 0)
+            {
+                ((MyCubeGrid)grid).GetCurrentMass(out baseMass, out physicalMass, GridLinkTypeEnum.Mechanical);
+                lastMassRefreshTicks = 60;
             }
         }
 
@@ -153,9 +166,14 @@ namespace Khjin.CombatInterdiction
             get { return grid.Physics; }
         }
 
-        public float Mass
+        public float DryMass
         {
-            get { return Physics.Mass; }
+            get { return baseMass; }
+        }
+
+        public float TotalMass
+        {
+            get { return physicalMass; }
         }
 
         public Vector3 LinearVelocity
